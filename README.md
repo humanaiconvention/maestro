@@ -98,7 +98,7 @@ maestro/
 No Docker required for local development. Uses SQLite in-process.
 
 ```bash
-git clone <repo>
+git clone https://github.com/humanaiconvention/maestro.git
 cd maestro/legacy_mvp
 
 pip install -r app/requirements.txt

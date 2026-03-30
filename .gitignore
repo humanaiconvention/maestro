@@ -54,5 +54,6 @@ Thumbs.db
 # Node (legacy frontend)
 node_modules/
 
-# SGT (separate repo: humanaiconvention/semantic-grounding-test-module)
-sgt/
+# SGT results (large model outputs / adapter weights)
+sgt/results/
+sgt/.coverage

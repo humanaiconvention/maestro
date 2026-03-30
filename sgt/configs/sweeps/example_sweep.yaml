@@ -1,0 +1,23 @@
+experiment_name: falsification_sweep_v1
+output_dir: results/sweeps/example_sweep
+models:
+  - Qwen/Qwen2.5-0.5B
+model:
+  base_model: Qwen/Qwen2.5-0.5B
+  use_lora: true
+  lora_r: 8
+  lora_alpha: 32
+recursion:
+  max_generations: 5
+  synthetic_samples_per_generation: 100
+  data_policy: replace
+training:
+  batch_size: 4
+  learning_rate: 2e-4
+  epochs_per_generation: 2
+sweeps:
+  correction_fractions: [0.0, 0.2, 0.5, 0.8]
+  seeds: [42, 123, 456]
+datasets:
+  train_family: arc
+  eval_samples: 30

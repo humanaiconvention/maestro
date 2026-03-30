@@ -1,0 +1,49 @@
+# Recursive Grounding Experiment Configuration
+# Defines the 4 training regimes and their mixture ratios
+
+# Global Settings
+experiment_name: "recursive_grounding_benchmark_v1"
+model:
+  base_model: "Qwen/Qwen2.5-0.5B"  # Small model for local testing
+  use_lora: true                   # Parameter-efficient fine-tuning
+  lora_r: 8
+  lora_alpha: 32
+
+recursion:
+  max_generations: 5
+  synthetic_samples_per_generation: 100
+
+training:
+  batch_size: 2
+  learning_rate: 2e-4
+  epochs_per_generation: 1
+
+# Regime Definitions
+regimes:
+  R1:
+    name: "synthetic_only"
+    synthetic_fraction: 1.0
+    frozen_real_fraction: 0.0
+    fresh_real_fraction: 0.0
+    corrected_fraction: 0.0
+    
+  R2:
+    name: "synthetic_plus_frozen_real"
+    synthetic_fraction: 0.8
+    frozen_real_fraction: 0.2
+    fresh_real_fraction: 0.0
+    corrected_fraction: 0.0
+    
+  R3:
+    name: "synthetic_plus_fresh_real"
+    synthetic_fraction: 0.8
+    frozen_real_fraction: 0.0
+    fresh_real_fraction: 0.2
+    corrected_fraction: 0.0
+    
+  R4:
+    name: "synthetic_plus_correction"
+    synthetic_fraction: 0.8
+    frozen_real_fraction: 0.0
+    fresh_real_fraction: 0.0
+    corrected_fraction: 0.2

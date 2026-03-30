@@ -1,0 +1,53 @@
+experiment_name: recursive_multi_task_benchmark_v1
+model:
+  base_model: Qwen/Qwen2.5-0.5B
+  use_lora: true
+  lora_r: 8
+  lora_alpha: 32
+  dtype: "float16"
+recursion:
+  max_generations: 5
+  synthetic_samples_per_generation: 250
+training:
+  batch_size: 4
+  learning_rate: 2e-4
+  epochs_per_generation: 3
+datasets:
+  train_family: arc
+  eval_samples: 50
+regimes:
+  R1:
+    name: synthetic_only
+    synthetic_fraction: 1.0
+    frozen_real_fraction: 0.0
+    fresh_real_fraction: 0.0
+    corrected_fraction: 0.0
+    data_policy: replace
+  R1_accum:
+    name: synthetic_only_accumulate
+    synthetic_fraction: 1.0
+    frozen_real_fraction: 0.0
+    fresh_real_fraction: 0.0
+    corrected_fraction: 0.0
+    data_policy: accumulate
+  R2:
+    name: synthetic_plus_frozen_real
+    synthetic_fraction: 0.5
+    frozen_real_fraction: 0.5
+    fresh_real_fraction: 0.0
+    corrected_fraction: 0.0
+    data_policy: replace
+  R3:
+    name: synthetic_plus_fresh_real
+    synthetic_fraction: 0.5
+    frozen_real_fraction: 0.0
+    fresh_real_fraction: 0.5
+    corrected_fraction: 0.0
+    data_policy: replace
+  R4:
+    name: synthetic_plus_80pct_correction
+    synthetic_fraction: 0.2
+    frozen_real_fraction: 0.0
+    fresh_real_fraction: 0.0
+    corrected_fraction: 0.8
+    data_policy: replace
