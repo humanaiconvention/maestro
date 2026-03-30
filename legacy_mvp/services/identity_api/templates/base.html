@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Project Maestro{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Minimal custom styles for accessibility focus states */
+        *:focus-visible {
+            outline: 2px solid #2563eb;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans antialiased flex flex-col min-h-screen">
+    <header class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <a href="/" class="flex-shrink-0 flex items-center font-bold text-xl text-gray-900">
+                        Project Maestro
+                    </a>
+                    <nav class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="/how-it-works" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">How it Works</a>
+                        <a href="/transparency" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Transparency</a>
+                        <a href="/safety" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Safety</a>
+                    </nav>
+                </div>
+                <div class="flex items-center">
+                    {% if actor %}
+                    <a href="/dashboard" class="text-sm font-medium text-gray-700 hover:text-blue-600 mr-4">Dashboard</a>
+                    <a href="/account/settings" class="text-sm font-medium text-gray-700 hover:text-blue-600">Settings</a>
+                    {% else %}
+                    <a href="/auth/login" class="text-sm font-medium text-blue-600 hover:text-blue-800">Sign in</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 mt-auto">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-500">
+                &copy; 2026 Project Maestro. All rights reserved.
+            </p>
+            <div class="mt-2 flex justify-center space-x-6 text-xs text-gray-400">
+                <a href="#" class="hover:text-gray-600">Founding Doctrine</a>
+                <a href="#" class="hover:text-gray-600">Platform Ontology</a>
+                <a href="#" class="hover:text-gray-600">Viability Constraints</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
+

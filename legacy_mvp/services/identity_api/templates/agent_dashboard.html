@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Agent Dashboard - Project Maestro{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl w-full mx-auto space-y-8">
+    <div class="border-b border-gray-200 pb-5 mb-6">
+        <h2 class="text-2xl font-bold text-gray-900">Agent Console</h2>
+        <p class="text-sm text-gray-500 mt-1">Manage Grounding Requests and thermodynamic settlements.</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Post a Grounding Request</h3>
+        <form action="/agent/requests" method="POST" class="space-y-4">
+        {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endif %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Hypothesis</label>
+                <input type="text" name="hypothesis" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Protocol</label>
+                <input type="text" name="observation_protocol" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Entropy Reduction Target (bits)</label>
+                    <input type="number" step="0.01" name="entropy_threshold" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Fund ($USD)</label>
+                    <input type="number" step="0.01" name="bounty_usd" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                </div>
+            </div>
+            <button type="submit" class="bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-black font-medium text-sm">Create Request</button>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+            <h3 class="text-lg font-medium text-gray-900">Active Grounding Requests</h3>
+        </div>
+        <ul class="divide-y divide-gray-200">
+            {% for req in requests %}
+            <li class="p-6">
+                <div class="flex justify-between">
+                    <div>
+                        <h4 class="text-md font-bold text-gray-900">{{ req.title }}</h4>
+                        <p class="text-sm text-gray-500">{{ req.request_class }} | Status: {{ req.status.value }}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-sm font-medium text-gray-900">${{ req.compensation_budget }}</span>
+                    </div>
+                </div>
+            </li>
+            {% else %}
+            <li class="p-6 text-center text-sm text-gray-500">No active requests.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+

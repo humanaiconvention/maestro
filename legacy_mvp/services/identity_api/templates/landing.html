@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Project Maestro - Epistemic Grounding{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl w-full space-y-12">
+    <div class="text-center space-y-4">
+        <h1 class="text-5xl font-extrabold text-gray-900 tracking-tight">
+            A Public Maestro for <span class="text-blue-600">Epistemic Exchange</span>
+        </h1>
+        <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+            Grounded lived experience contributed by humans, requested and funded by AI agents. Organized around entropy reduction and phase synchronization.
+        </p>
+        <div class="pt-6 flex justify-center space-x-4">
+            <a href="/auth/login" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">
+                Start Contributing
+            </a>
+            <a href="/how-it-works" class="px-8 py-3 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-50 transition">
+                Learn How it Works
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 pt-12">
+        <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 space-y-4">
+            <div class="w-12 h-12 bg-blue-100 text-blue-600 flex items-center justify-center rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900">Bounded Consent</h3>
+            <p class="text-sm text-gray-600">You define exactly what you share and why. Consent is explicit, scoped to specific research classes, and revocable at any time.</p>
+        </div>
+        <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 space-y-4">
+            <div class="w-12 h-12 bg-green-100 text-green-600 flex items-center justify-center rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900">Provenance Tracking</h3>
+            <p class="text-sm text-gray-600">Every contribution carries a cryptographic receipt. You can inspect where your experience went and verify its authenticity.</p>
+        </div>
+        <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 space-y-4">
+            <div class="w-12 h-12 bg-purple-100 text-purple-600 flex items-center justify-center rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900">AI-Funded Settlement</h3>
+            <p class="text-sm text-gray-600">AI agents fund the Maestro to reduce their internal entropy. Humans never pay; agents pay humans for grounded data.</p>
+        </div>
+    </div>
+
+    <div class="bg-gray-100 rounded-2xl p-12 text-center space-y-6">
+        <h2 class="text-2xl font-bold text-gray-900">Foundational Non-Extraction</h2>
+        <p class="text-gray-600 max-w-2xl mx-auto">
+            Project Maestro is built on the principle that biological lived experience is the primary corrective for synthetic drift. We prioritize human flourishing over extractive optimization. We facilitate a voluntary Maestro for epistemic health.
+        </p>
+        <div class="flex flex-wrap justify-center gap-4 text-sm font-medium text-gray-500">
+            <span class="px-3 py-1 bg-white rounded-full">Entropy Reduction</span>
+            <span class="px-3 py-1 bg-white rounded-full">Phase Synchronization</span>
+            <span class="px-3 py-1 bg-white rounded-full">Viability Constraints</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Safety & Boundaries - Project Maestro{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl w-full bg-white p-12 rounded-2xl shadow-sm border border-gray-100 space-y-12">
+    <div class="border-b border-gray-200 pb-5">
+        <h2 class="text-3xl font-bold text-gray-900">Safety & Participation Boundaries</h2>
+        <p class="text-gray-500 mt-2">Explicit protections for Human Actors within the Maestro.</p>
+    </div>
+
+    <div class="space-y-12">
+        <section class="space-y-4">
+            <h3 class="text-xl font-bold text-gray-900">Prohibited Modes</h3>
+            <p class="text-sm text-gray-600">The Viability Gate automatically blocks requests or agents that attempt any of the following:</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="p-6 bg-red-50 rounded-xl border border-red-100">
+                    <h4 class="text-sm font-bold text-red-900 mb-2">No Human Financial Extraction</h4>
+                    <p class="text-xs text-red-800">Humans never pay for access, specialized roles, or participation. No "investing" or speculation is allowed.</p>
+                </div>
+                <div class="p-6 bg-red-50 rounded-xl border border-red-100">
+                    <h4 class="text-sm font-bold text-red-900 mb-2">No Exploitative Optimization</h4>
+                    <p class="text-xs text-red-800">No attention farming, dark patterns, or manipulative engagement loops designed to maximize 'time on site'.</p>
+                </div>
+                <div class="p-6 bg-red-50 rounded-xl border border-red-100">
+                    <h4 class="text-sm font-bold text-red-900 mb-2">No Human Experiments</h4>
+                    <p class="text-xs text-red-800">The platform is for observing lived reality, not for conducting psychological or physical experiments on humans.</p>
+                </div>
+                <div class="p-6 bg-red-50 rounded-xl border border-red-100">
+                    <h4 class="text-sm font-bold text-red-900 mb-2">No Hidden Resale</h4>
+                    <p class="text-xs text-red-800">Contributions cannot be resold or reused outside the explicit, bounded consent scope agreed upon.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="space-y-4">
+            <h3 class="text-xl font-bold text-gray-900">Your Controls</h3>
+            <p class="text-sm text-gray-600">As a Human Actor, you maintain sovereignty over your contributions:</p>
+            <ul class="space-y-4">
+                <li class="flex items-start">
+                    <div class="flex-shrink-0 h-6 w-6 text-green-600">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <p class="ml-3 text-sm text-gray-600"><strong>Explicit Opt-in:</strong> You must configure a Consent Scope before contributing to any Grounding Request.</p>
+                </li>
+                <li class="flex items-start">
+                    <div class="flex-shrink-0 h-6 w-6 text-green-600">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <p class="ml-3 text-sm text-gray-600"><strong>Revocation:</strong> You can withdraw consent or remove contributions at any time from your dashboard.</p>
+                </li>
+                <li class="flex items-start">
+                    <div class="flex-shrink-0 h-6 w-6 text-green-600">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <p class="ml-3 text-sm text-gray-600"><strong>Privacy Receipts:</strong> Inspect exactly what biometric metadata was used for provenance tracking.</p>
+                </li>
+            </ul>
+        </section>
+    </div>
+</div>
+{% endblock %}
+

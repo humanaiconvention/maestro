@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Project Maestro{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl w-full mx-auto space-y-8">
+    <div class="flex justify-between items-center border-b border-gray-200 pb-5">
+        <div>
+            <h2 class="text-3xl font-bold text-gray-900">Maestro Dashboard</h2>
+            <p class="text-sm text-gray-500 mt-1">Welcome back, {{ profile.public_handle or actor.display_name }}.</p>
+        </div>
+        <div class="flex space-x-4">
+            <a href="/account/settings" class="text-sm font-medium text-gray-600 hover:text-gray-900">Account Settings</a>
+            <a href="/consent/settings" class="text-sm font-medium text-blue-600 hover:text-blue-900">Manage Consent</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <!-- Stats -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 class="text-sm font-medium text-gray-500 mb-1">Contributions</h3>
+            <p class="text-3xl font-bold text-gray-900">{{ stats.total_contributions }}</p>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 class="text-sm font-medium text-gray-500 mb-1">Verified</h3>
+            <p class="text-3xl font-bold text-blue-600">{{ stats.pending_settlements }}</p>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 class="text-sm font-medium text-gray-500 mb-1">Settled</h3>
+            <p class="text-3xl font-bold text-green-600">{{ stats.settled_contributions }}</p>
+        </div>
+        <div class="bg-blue-600 p-6 rounded-xl shadow-sm border border-blue-700 text-white">
+            <h3 class="text-sm font-medium text-blue-100 mb-1">Total Compensation</h3>
+            <p class="text-3xl font-bold">${{ (stats.settled_total or 0) | round(2) }}</p>
+            <a href="/compensation" class="text-xs text-blue-200 hover:text-white mt-2 inline-block font-medium">View Ledger &rarr;</a>
+        </div>
+    </div>
+
+    <!-- Active Opportunities -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+            <h3 class="text-lg font-medium text-gray-900">Active Grounding Opportunities</h3>
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Matched to your Consent Scope</span>
+        </div>
+        <ul class="divide-y divide-gray-200">
+            {% for req in opportunities %}
+            <li class="p-6 hover:bg-gray-50 transition">
+                <div class="flex justify-between">
+                    <div class="flex-1">
+                        <h4 class="text-md font-bold text-gray-900">{{ req.title }}</h4>
+                        <p class="mt-1 text-sm text-gray-600">{{ req.description }}</p>
+                        <div class="mt-3 flex items-center space-x-4 text-xs text-gray-500">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-medium bg-blue-100 text-blue-800">
+                                Class: {{ req.request_class }}
+                            </span>
+                            <span>Target Entropy Reduction: {{ req.hypothesis_entropy_reduction }} bits</span>
+                        </div>
+                    </div>
+                    <div class="ml-6 flex flex-col items-end">
+                        <span class="text-lg font-bold text-green-600">${{ req.compensation_budget }} Fund</span>
+                        <a href="/opportunities/{{ req.request_id }}" class="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                            Contribute
+                        </a>
+                    </div>
+                </div>
+            </li>
+            {% else %}
+            <li class="p-6 text-center text-gray-500">
+                <p>No active opportunities match your current consent scope.</p>
+                <a href="/consent/settings" class="text-blue-600 hover:underline mt-2 inline-block">Update your allowed classes.</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Contribution History Link -->
+    <div class="text-center">
+        <a href="/history" class="text-sm font-medium text-blue-600 hover:text-blue-800">View Full Contribution History & Provenance Receipts &rarr;</a>
+    </div>
+</div>
+{% endblock %}
+

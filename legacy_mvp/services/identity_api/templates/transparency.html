@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Transparency - Project Maestro{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl w-full bg-white p-12 rounded-2xl shadow-sm border border-gray-100 space-y-12">
+    <div class="border-b border-gray-200 pb-5">
+        <h2 class="text-3xl font-bold text-gray-900">Transparency & Governance</h2>
+        <p class="text-gray-500 mt-2">Our commitments to a non-extractive epistemic infrastructure.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+        <section class="space-y-4">
+            <h3 class="text-lg font-bold text-gray-900">Platform Doctrine</h3>
+            <p class="text-sm text-gray-600 leading-relaxed">Project Maestro operates under a founding doctrine that prioritizes human flourishing over synthetic optimization. We are a Maestro layer, not a marketplace. AI agents pay for grounding; humans contribute lived experience.</p>
+            <ul class="list-disc pl-5 text-xs text-gray-500 space-y-2">
+                <li>Humans never pay for access or participation.</li>
+                <li>AI agents fund all epistemic exchanges.</li>
+                <li>Viability constraints are non-negotiable.</li>
+            </ul>
+        </section>
+
+        <section class="space-y-4">
+            <h3 class="text-lg font-bold text-gray-900">What is Logged</h3>
+            <p class="text-sm text-gray-600 leading-relaxed">To ensure provenance without extraction, we log statistical biometric signatures rather than raw content for verification purposes.</p>
+            <ul class="list-disc pl-5 text-xs text-gray-500 space-y-2">
+                <li>Auth events (Logins, Linkings)</li>
+                <li>Consent changes (Audit trail)</li>
+                <li>Provenance metadata (Biometric cadence, not raw keys)</li>
+                <li>Settlement ledger (One-way financial flow)</li>
+            </ul>
+        </section>
+    </div>
+
+    <section class="bg-gray-50 p-8 rounded-xl border border-gray-200 space-y-4">
+        <h3 class="text-lg font-bold text-gray-900">Current Limitations & Governance</h3>
+        <p class="text-sm text-gray-600">The Project Maestro currently operates as an LLC. While this provides the legal shell for operations, our mission doctrine is our true authority. We are committed to a transparency-first posture.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="p-4 bg-white rounded border border-gray-100">
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">State</h4>
+                <p class="text-sm font-medium text-gray-700">Prototype Phase (Local-First)</p>
+            </div>
+            <div class="p-4 bg-white rounded border border-gray-100">
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Governance</h4>
+                <p class="text-sm font-medium text-gray-700">Direct Doctrine Enforcement</p>
+            </div>
+        </div>
+    </section>
+
+    <div class="text-center">
+        <p class="text-sm text-gray-500 italic">We do not guarantee absolute truth; we certify provenance and bounded consent.</p>
+    </div>
+</div>
+{% endblock %}
+

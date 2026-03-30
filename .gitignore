@@ -1,0 +1,58 @@
+# Environment files
+*.env
+.env
+!.env.example
+!**/.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Model artifacts (large binaries)
+*.safetensors
+*.pt
+*.pth
+*.gguf
+*.bin
+*.npz
+
+# Test & coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+tests_output.txt
+
+# Temporary files
+tmp/
+*.tmp
+*.log
+
+# IDE / editor / local agent config
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Node (legacy frontend)
+node_modules/
+
+# SGT (separate repo: humanaiconvention/semantic-grounding-test-module)
+sgt/

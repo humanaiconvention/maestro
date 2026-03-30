@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Compensation - Project Maestro{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl w-full bg-white p-12 rounded-2xl shadow-sm border border-gray-100 space-y-12">
+    <div class="border-b border-gray-200 pb-5">
+        <h2 class="text-3xl font-bold text-gray-900">Compensation & Settlement</h2>
+        <p class="text-gray-500 mt-2">A ledger of value exchange for your epistemic grounding.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="bg-blue-50 p-8 rounded-xl border border-blue-100">
+            <h3 class="text-sm font-bold text-blue-900 uppercase tracking-wider mb-2">Pending Settlement</h3>
+            <p class="text-4xl font-extrabold text-blue-600">${{ pending_total | round(2) }}</p>
+            <p class="text-xs text-blue-800 mt-4 italic">Funds are held in agent escrows and released upon verification of entropy reduction.</p>
+        </div>
+        <div class="bg-green-50 p-8 rounded-xl border border-green-100">
+            <h3 class="text-sm font-bold text-green-900 uppercase tracking-wider mb-2">Total Settled</h3>
+            <p class="text-4xl font-extrabold text-green-600">${{ settled_total | round(2) }}</p>
+            <p class="text-xs text-green-800 mt-4 italic">Successfully settled to your payout profile.</p>
+        </div>
+    </div>
+
+    <section class="space-y-4">
+        <h3 class="text-lg font-bold text-gray-900">Recent Settlement Events</h3>
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+            <table class="min-w-full divide-y divide-gray-300">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Date</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Type</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Gross</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                    {% for event in settlements %}
+                    <tr>
+                        <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 sm:pl-6">{{ event.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900">{{ event.settlement_type | title }}</td>
+                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900 font-medium">${{ event.gross_amount | round(2) }}</td>
+                        <td class="whitespace-nowrap px-3 py-4 text-sm">
+                            <span class="inline-flex rounded-full px-2 text-xs font-semibold leading-5 
+                                {% if event.status.value == 'completed' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                {{ event.status.value | title }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="py-6 text-center text-sm text-gray-500">No settlement events recorded.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <div class="bg-gray-50 p-6 rounded-xl border border-gray-200">
+        <h4 class="text-sm font-bold text-gray-900 mb-2">Non-Extractive Commitment</h4>
+        <p class="text-xs text-gray-600 italic">Compensation rates are governed by viability constraints. The Maestro ensures a minimum effective hourly rate of $50.00 USD for biological lived experience contributions.</p>
+    </div>
+</div>
+{% endblock %}
+

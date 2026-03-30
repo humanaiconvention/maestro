@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+testpaths = ["tests", "legacy_mvp/tests", "legacy_mvp/services/identity_api/tests"]
+pythonpath = [".", "legacy_mvp", "legacy_mvp/services/identity_api"]
+cache_dir = "tmp/.pytest_cache"

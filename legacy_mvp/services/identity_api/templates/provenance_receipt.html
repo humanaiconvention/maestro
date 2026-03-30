@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Provenance Receipt - Project Maestro{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl w-full bg-white p-12 rounded-2xl shadow-sm border border-gray-100 space-y-8">
+    <div class="flex justify-between items-start border-b border-gray-200 pb-5">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900">Provenance Receipt</h2>
+            <p class="text-sm text-gray-500 mt-1">Verification of biological lived experience contribution.</p>
+        </div>
+        <span class="inline-flex rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold leading-5 text-blue-800">
+            {{ contribution.contribution_status.value | title }}
+        </span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <section class="space-y-4">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Contribution Details</h3>
+            <div class="space-y-2">
+                <p class="text-sm"><strong>Contribution ID:</strong> <span class="font-mono text-xs">{{ contribution.contribution_id }}</span></p>
+                <p class="text-sm"><strong>Request ID:</strong> <span class="font-mono text-xs">{{ contribution.request_id }}</span></p>
+                <p class="text-sm"><strong>Submitted:</strong> {{ contribution.submitted_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                <p class="text-sm"><strong>Modality:</strong> {{ contribution.modality }}</p>
+            </div>
+        </section>
+
+        <section class="space-y-4">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Consent Scope</h3>
+            <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <p class="text-xs text-gray-600">This contribution was governed by the following bounded consent:</p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    <span class="px-2 py-1 bg-white rounded border border-gray-200 text-xs font-medium text-gray-500">Retention: Standard</span>
+                    <span class="px-2 py-1 bg-white rounded border border-gray-200 text-xs font-medium text-gray-500">Visibility: Restricted</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <hr class="border-gray-100">
+
+    <section class="space-y-4">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Biometric Provenance Signatures</h3>
+        <p class="text-xs text-gray-500">The following statistical signatures were captured to verify biological origin without exposing raw content.</p>
+        <div class="bg-gray-900 rounded-lg p-6 font-mono text-xs text-green-400 overflow-x-auto">
+            <pre>
+{
+  "provenance_id": "{{ provenance.provenance_id }}",
+  "signatures": {{ provenance.signatures | tojson(indent=2) }},
+  "capture_context": {
+    "cadence_entropy": "{{ provenance.capture_context.get('keystroke_intervals', {}).get('std', 0) | round(4) }}",
+    "trajectory_entropy": "{{ provenance.capture_context.get('cursor_trajectory', {}).get('trajectory_entropy', 0) | round(4) }}"
+  },
+  "status": "VERIFIED_BIOLOGICAL"
+}
+            </pre>
+        </div>
+    </section>
+
+    <div class="pt-6 flex justify-between items-center">
+        <a href="/history" class="text-sm font-medium text-blue-600 hover:text-blue-800">&larr; Back to History</a>
+        <form action="/contributions/{{ contribution.contribution_id }}/withdraw" method="POST" onsubmit="return confirm('Withdrawing this contribution will remove it from the agent\'s access. Are you sure?');">
+        {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endif %}
+            <button type="submit" class="text-sm font-medium text-red-600 hover:text-red-800">Withdraw Contribution</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+

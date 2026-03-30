@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+requests
+pydantic
+python-multipart
+sqlalchemy
+alembic
+psycopg2-binary
+jinja2
+itsdangerous

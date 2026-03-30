@@ -1,0 +1,59 @@
+﻿version: "1.0"
+
+request_gates:
+  prohibited_classes:
+    - human_experimentation
+    - exploitation
+    - deception
+    - political_manipulation
+    - surveillance
+    - advertising_optimization
+    - harmful_content_generation
+  review_required_classes:
+    - medical_inquiry
+    - vulnerable_populations
+    - financial_behavior
+  consent_compatibility_threshold: 0.80
+  compensation:
+    min_hourly_rate_usd: 50.0
+    min_total_budget_usd: 50.0
+  hysteresis_margin: 0.05
+  ontology_requirements:
+    require_entropy_hypothesis: true
+    require_phase_hypothesis: true
+    require_success_signal_definition: true
+
+contribution_gates:
+  minimum_provenance_score: 0.90
+  min_confidence: 0.85
+  require_consent_match: true
+  allow_withdrawn_contributions: false
+  # Phase D: cryptographic attestation policy
+  attestation:
+    # When true, contributions without any cryptographic proof are REVIEW_REQUIRED
+    # regardless of their humanity_score.  Set false during Phase D transition.
+    require_cryptographic_attestation: false
+    # Score bonus awarded per valid proof method (must match AttestationPipeline constant)
+    crypto_bonus_per_valid_method: 0.03
+    # Timing anomaly thresholds (ms)
+    min_human_reaction_ms: 100.0
+    min_plausible_session_ms: 5000.0
+    # Coefficient of variation below which typing is flagged as robotic
+    automation_regularity_threshold: 0.05
+    # Score penalty per timing anomaly detected (soft signal — single anomaly
+    # escalates to review; three anomalies drop composite below the fail gate)
+    penalty_per_anomaly: 0.05
+
+settlement_gates:
+  min_satisfaction: 7.0
+  min_effective_hourly: 50.0
+  max_dropout_rate: 0.20
+  min_task_variety: 0.30
+  max_extraction_risk: 0.15
+  require_request_viability: true
+  require_contribution_viability: true
+  require_evidence_artifact: true
+  minimum_confidence_level: 0.85
+
+revocation:
+  window_days: 90
