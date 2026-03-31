@@ -1,0 +1,393 @@
+{
+  "$defs": {
+    "ArchitectureLayer": {
+      "enum": [
+        "public_website",
+        "public_docs",
+        "envoy_workspace",
+        "private_envoy_runtime",
+        "participation_covenant",
+        "knowledge_ledger",
+        "maestro_api",
+        "viability_gates",
+        "review_queue",
+        "audit_ledger",
+        "monitoring_metrics"
+      ],
+      "title": "ArchitectureLayer",
+      "type": "string"
+    },
+    "ArchitectureStackEntry": {
+      "properties": {
+        "layer": {
+          "$ref": "#/$defs/ArchitectureLayer"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "required_artifacts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Artifacts",
+          "type": "array"
+        },
+        "required_controls": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Controls",
+          "type": "array"
+        },
+        "review_questions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Review Questions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "layer",
+        "intent"
+      ],
+      "title": "ArchitectureStackEntry",
+      "type": "object"
+    },
+    "EnforcementMode": {
+      "enum": [
+        "runtime_block",
+        "runtime_warn",
+        "audit_only",
+        "manual_review"
+      ],
+      "title": "EnforcementMode",
+      "type": "string"
+    },
+    "IntegrityCommitment": {
+      "enum": [
+        "bounded_consent",
+        "informed_disclosure",
+        "transparent_methods",
+        "revocable_participation",
+        "proportional_safeguards",
+        "accountable_auditability",
+        "non_extraction",
+        "anti_capture",
+        "anti_lock_in",
+        "anti_proof_gaming",
+        "anti_social_engineering",
+        "reciprocal_dignity"
+      ],
+      "title": "IntegrityCommitment",
+      "type": "string"
+    },
+    "IntegrityControl": {
+      "properties": {
+        "control_id": {
+          "minLength": 1,
+          "title": "Control Id",
+          "type": "string"
+        },
+        "commitment": {
+          "$ref": "#/$defs/IntegrityCommitment"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "layers": {
+          "items": {
+            "$ref": "#/$defs/ArchitectureLayer"
+          },
+          "minItems": 1,
+          "title": "Layers",
+          "type": "array"
+        },
+        "enforcement": {
+          "$ref": "#/$defs/EnforcementMode",
+          "default": "audit_only"
+        },
+        "verification_signals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Verification Signals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "control_id",
+        "commitment",
+        "description",
+        "layers"
+      ],
+      "title": "IntegrityControl",
+      "type": "object"
+    },
+    "IntegrityDefault": {
+      "properties": {
+        "default_id": {
+          "minLength": 1,
+          "title": "Default Id",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "layers": {
+          "items": {
+            "$ref": "#/$defs/ArchitectureLayer"
+          },
+          "minItems": 1,
+          "title": "Layers",
+          "type": "array"
+        },
+        "desired_state": {
+          "minLength": 1,
+          "title": "Desired State",
+          "type": "string"
+        },
+        "anti_goal": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Anti Goal"
+        }
+      },
+      "required": [
+        "default_id",
+        "description",
+        "layers",
+        "desired_state"
+      ],
+      "title": "IntegrityDefault",
+      "type": "object"
+    },
+    "IntegrityMetric": {
+      "properties": {
+        "metric_id": {
+          "minLength": 1,
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "layers": {
+          "items": {
+            "$ref": "#/$defs/ArchitectureLayer"
+          },
+          "minItems": 1,
+          "title": "Layers",
+          "type": "array"
+        },
+        "target": {
+          "minLength": 1,
+          "title": "Target",
+          "type": "string"
+        },
+        "failure_trigger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failure Trigger"
+        }
+      },
+      "required": [
+        "metric_id",
+        "description",
+        "layers",
+        "target"
+      ],
+      "title": "IntegrityMetric",
+      "type": "object"
+    },
+    "IntegrityProhibition": {
+      "properties": {
+        "prohibition_id": {
+          "minLength": 1,
+          "title": "Prohibition Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RiskPatternKind"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "detection_signals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Detection Signals",
+          "type": "array"
+        },
+        "response_actions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Response Actions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "prohibition_id",
+        "kind",
+        "description"
+      ],
+      "title": "IntegrityProhibition",
+      "type": "object"
+    },
+    "RiskPatternKind": {
+      "enum": [
+        "ambient_extraction",
+        "coercive_dependency",
+        "dark_pattern",
+        "lock_in_by_default",
+        "proof_by_charisma",
+        "proof_gaming",
+        "social_engineering",
+        "identity_manipulation",
+        "undisclosed_retention",
+        "engagement_steering",
+        "capture_pressure"
+      ],
+      "title": "RiskPatternKind",
+      "type": "string"
+    },
+    "StandardStatus": {
+      "enum": [
+        "draft",
+        "active",
+        "retired"
+      ],
+      "title": "StandardStatus",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": "haic.participation_integrity_standard.v0",
+      "default": "haic.participation_integrity_standard.v0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "standard_id": {
+      "pattern": "^[a-z0-9._:-]+$",
+      "title": "Standard Id",
+      "type": "string"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/StandardStatus",
+      "default": "draft"
+    },
+    "purpose": {
+      "minLength": 1,
+      "title": "Purpose",
+      "type": "string"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Summary"
+    },
+    "commitments": {
+      "items": {
+        "$ref": "#/$defs/IntegrityCommitment"
+      },
+      "minItems": 1,
+      "title": "Commitments",
+      "type": "array"
+    },
+    "prohibited_patterns": {
+      "items": {
+        "$ref": "#/$defs/IntegrityProhibition"
+      },
+      "minItems": 1,
+      "title": "Prohibited Patterns",
+      "type": "array"
+    },
+    "required_controls": {
+      "items": {
+        "$ref": "#/$defs/IntegrityControl"
+      },
+      "minItems": 1,
+      "title": "Required Controls",
+      "type": "array"
+    },
+    "defaults": {
+      "items": {
+        "$ref": "#/$defs/IntegrityDefault"
+      },
+      "title": "Defaults",
+      "type": "array"
+    },
+    "accountability_metrics": {
+      "items": {
+        "$ref": "#/$defs/IntegrityMetric"
+      },
+      "title": "Accountability Metrics",
+      "type": "array"
+    },
+    "architecture_stack": {
+      "items": {
+        "$ref": "#/$defs/ArchitectureStackEntry"
+      },
+      "minItems": 1,
+      "title": "Architecture Stack",
+      "type": "array"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "standard_id",
+    "title",
+    "purpose",
+    "commitments",
+    "prohibited_patterns",
+    "required_controls",
+    "architecture_stack"
+  ],
+  "title": "ParticipationIntegrityStandard",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://humanaiconvention.com/specs/haic/participation-integrity-standard.v0.schema.json"
+}

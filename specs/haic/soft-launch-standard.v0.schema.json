@@ -1,0 +1,484 @@
+{
+  "$defs": {
+    "ArchitectureLayer": {
+      "enum": [
+        "public_website",
+        "public_docs",
+        "envoy_workspace",
+        "private_envoy_runtime",
+        "participation_covenant",
+        "knowledge_ledger",
+        "maestro_api",
+        "viability_gates",
+        "review_queue",
+        "audit_ledger",
+        "monitoring_metrics"
+      ],
+      "title": "ArchitectureLayer",
+      "type": "string"
+    },
+    "ArchitectureStackEntry": {
+      "properties": {
+        "layer": {
+          "$ref": "#/$defs/ArchitectureLayer"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "required_artifacts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Artifacts",
+          "type": "array"
+        },
+        "required_controls": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Controls",
+          "type": "array"
+        },
+        "review_questions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Review Questions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "layer",
+        "intent"
+      ],
+      "title": "ArchitectureStackEntry",
+      "type": "object"
+    },
+    "EnforcementMode": {
+      "enum": [
+        "runtime_block",
+        "runtime_warn",
+        "audit_only",
+        "manual_review"
+      ],
+      "title": "EnforcementMode",
+      "type": "string"
+    },
+    "SoftLaunchCommitment": {
+      "enum": [
+        "calibration_not_governance",
+        "anti_founder_overweighting",
+        "anti_early_user_capture",
+        "diversity_before_direction",
+        "delayed_adaptive_optimization",
+        "scheduled_review_only",
+        "bounded_influence"
+      ],
+      "title": "SoftLaunchCommitment",
+      "type": "string"
+    },
+    "SoftLaunchControl": {
+      "properties": {
+        "control_id": {
+          "minLength": 1,
+          "title": "Control Id",
+          "type": "string"
+        },
+        "commitment": {
+          "$ref": "#/$defs/SoftLaunchCommitment"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "layers": {
+          "items": {
+            "$ref": "#/$defs/ArchitectureLayer"
+          },
+          "minItems": 1,
+          "title": "Layers",
+          "type": "array"
+        },
+        "enforcement": {
+          "$ref": "#/$defs/EnforcementMode",
+          "default": "audit_only"
+        },
+        "verification_signals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Verification Signals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "control_id",
+        "commitment",
+        "description",
+        "layers"
+      ],
+      "title": "SoftLaunchControl",
+      "type": "object"
+    },
+    "SoftLaunchInfluenceMode": {
+      "enum": [
+        "calibration_only",
+        "bounded_feedback",
+        "governance_eligible"
+      ],
+      "title": "SoftLaunchInfluenceMode",
+      "type": "string"
+    },
+    "SoftLaunchMetric": {
+      "properties": {
+        "metric_id": {
+          "minLength": 1,
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "target": {
+          "minLength": 1,
+          "title": "Target",
+          "type": "string"
+        },
+        "failure_trigger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failure Trigger"
+        }
+      },
+      "required": [
+        "metric_id",
+        "description",
+        "target"
+      ],
+      "title": "SoftLaunchMetric",
+      "type": "object"
+    },
+    "SoftLaunchPhase": {
+      "enum": [
+        "seed",
+        "pilot",
+        "governance_eligible"
+      ],
+      "title": "SoftLaunchPhase",
+      "type": "string"
+    },
+    "SoftLaunchPolicy": {
+      "properties": {
+        "phase": {
+          "$ref": "#/$defs/SoftLaunchPhase",
+          "default": "seed"
+        },
+        "participation_mode": {
+          "$ref": "#/$defs/SoftLaunchInfluenceMode",
+          "default": "calibration_only"
+        },
+        "founder_input_mode": {
+          "$ref": "#/$defs/SoftLaunchInfluenceMode",
+          "default": "calibration_only"
+        },
+        "early_human_input_mode": {
+          "$ref": "#/$defs/SoftLaunchInfluenceMode",
+          "default": "calibration_only"
+        },
+        "early_agent_input_mode": {
+          "$ref": "#/$defs/SoftLaunchInfluenceMode",
+          "default": "calibration_only"
+        },
+        "adaptive_optimization_enabled": {
+          "default": false,
+          "title": "Adaptive Optimization Enabled",
+          "type": "boolean"
+        },
+        "scheduled_review_interval_days": {
+          "default": 14,
+          "minimum": 1,
+          "title": "Scheduled Review Interval Days",
+          "type": "integer"
+        },
+        "max_influence_share_per_actor": {
+          "default": 0.1,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Max Influence Share Per Actor",
+          "type": "number"
+        },
+        "max_influence_share_per_cluster": {
+          "default": 0.25,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Max Influence Share Per Cluster",
+          "type": "number"
+        },
+        "minimum_human_participants": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Minimum Human Participants",
+          "type": "integer"
+        },
+        "minimum_agent_participants": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Minimum Agent Participants",
+          "type": "integer"
+        },
+        "minimum_distinct_cohorts": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Minimum Distinct Cohorts",
+          "type": "integer"
+        },
+        "minimum_distinct_problem_domains": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Minimum Distinct Problem Domains",
+          "type": "integer"
+        },
+        "governance_unlock_thresholds": {
+          "items": {
+            "$ref": "#/$defs/SoftLaunchThreshold"
+          },
+          "title": "Governance Unlock Thresholds",
+          "type": "array"
+        },
+        "directional_change_keywords": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Directional Change Keywords",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        }
+      },
+      "title": "SoftLaunchPolicy",
+      "type": "object"
+    },
+    "SoftLaunchProhibition": {
+      "properties": {
+        "prohibition_id": {
+          "minLength": 1,
+          "title": "Prohibition Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/SoftLaunchRiskPatternKind"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "detection_signals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Detection Signals",
+          "type": "array"
+        },
+        "response_actions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Response Actions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "prohibition_id",
+        "kind",
+        "description"
+      ],
+      "title": "SoftLaunchProhibition",
+      "type": "object"
+    },
+    "SoftLaunchRiskPatternKind": {
+      "enum": [
+        "founder_capture",
+        "early_user_capture",
+        "cohort_capture",
+        "coercive_dependence",
+        "proof_gaming",
+        "social_engineering",
+        "premature_governance",
+        "adaptive_feedback_lock_in"
+      ],
+      "title": "SoftLaunchRiskPatternKind",
+      "type": "string"
+    },
+    "SoftLaunchThreshold": {
+      "properties": {
+        "threshold_id": {
+          "minLength": 1,
+          "title": "Threshold Id",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "minimum": {
+          "minimum": 0,
+          "title": "Minimum",
+          "type": "number"
+        },
+        "current": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Current"
+        },
+        "required_for_governance": {
+          "default": true,
+          "title": "Required For Governance",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "threshold_id",
+        "description",
+        "minimum"
+      ],
+      "title": "SoftLaunchThreshold",
+      "type": "object"
+    },
+    "StandardStatus": {
+      "enum": [
+        "draft",
+        "active",
+        "retired"
+      ],
+      "title": "StandardStatus",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": "haic.soft_launch_standard.v0",
+      "default": "haic.soft_launch_standard.v0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "standard_id": {
+      "pattern": "^[a-z0-9._:-]+$",
+      "title": "Standard Id",
+      "type": "string"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/StandardStatus",
+      "default": "draft"
+    },
+    "purpose": {
+      "minLength": 1,
+      "title": "Purpose",
+      "type": "string"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Summary"
+    },
+    "commitments": {
+      "items": {
+        "$ref": "#/$defs/SoftLaunchCommitment"
+      },
+      "minItems": 1,
+      "title": "Commitments",
+      "type": "array"
+    },
+    "prohibited_patterns": {
+      "items": {
+        "$ref": "#/$defs/SoftLaunchProhibition"
+      },
+      "minItems": 1,
+      "title": "Prohibited Patterns",
+      "type": "array"
+    },
+    "required_controls": {
+      "items": {
+        "$ref": "#/$defs/SoftLaunchControl"
+      },
+      "minItems": 1,
+      "title": "Required Controls",
+      "type": "array"
+    },
+    "default_policy": {
+      "$ref": "#/$defs/SoftLaunchPolicy"
+    },
+    "accountability_metrics": {
+      "items": {
+        "$ref": "#/$defs/SoftLaunchMetric"
+      },
+      "title": "Accountability Metrics",
+      "type": "array"
+    },
+    "architecture_stack": {
+      "items": {
+        "$ref": "#/$defs/ArchitectureStackEntry"
+      },
+      "minItems": 1,
+      "title": "Architecture Stack",
+      "type": "array"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "standard_id",
+    "title",
+    "purpose",
+    "commitments",
+    "prohibited_patterns",
+    "required_controls",
+    "default_policy",
+    "architecture_stack"
+  ],
+  "title": "SoftLaunchStandard",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://humanaiconvention.com/specs/haic/soft-launch-standard.v0.schema.json"
+}

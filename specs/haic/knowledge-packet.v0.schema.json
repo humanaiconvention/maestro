@@ -1,0 +1,992 @@
+{
+  "$defs": {
+    "AlignmentCommitment": {
+      "enum": [
+        "honesty",
+        "accuracy",
+        "reliability",
+        "verifiability",
+        "falsifiability",
+        "usefulness",
+        "scientific_grounding",
+        "first_principles_reasoning"
+      ],
+      "title": "AlignmentCommitment",
+      "type": "string"
+    },
+    "AlignmentMode": {
+      "enum": [
+        "geometric_orientation",
+        "audit_signal",
+        "hard_constraint"
+      ],
+      "title": "AlignmentMode",
+      "type": "string"
+    },
+    "ClaimPacket": {
+      "properties": {
+        "schema_version": {
+          "const": "haic.knowledge_packet.v0",
+          "default": "haic.knowledge_packet.v0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "packet_id": {
+          "pattern": "^[a-z0-9._:-]+$",
+          "title": "Packet Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "claim",
+          "default": "claim",
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/KnowledgeStatus",
+          "default": "provisional"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "default": "shared"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "alignment_axis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EpistemicAlignmentAxis"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "provenance": {
+          "$ref": "#/$defs/ProvenanceEnvelope"
+        },
+        "links": {
+          "$ref": "#/$defs/PacketLinks"
+        },
+        "statement": {
+          "minLength": 1,
+          "title": "Statement",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/ClaimScope"
+        },
+        "confidence": {
+          "$ref": "#/$defs/ConfidenceEstimate"
+        },
+        "update_conditions": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Update Conditions",
+          "type": "array"
+        },
+        "supporting_packet_ids": {
+          "items": {
+            "pattern": "^[a-z0-9._:-]+$",
+            "type": "string"
+          },
+          "title": "Supporting Packet Ids",
+          "type": "array"
+        },
+        "challenge_packet_ids": {
+          "items": {
+            "pattern": "^[a-z0-9._:-]+$",
+            "type": "string"
+          },
+          "title": "Challenge Packet Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "packet_id",
+        "created_at",
+        "updated_at",
+        "title",
+        "provenance",
+        "statement",
+        "scope",
+        "confidence",
+        "update_conditions"
+      ],
+      "title": "ClaimPacket",
+      "type": "object"
+    },
+    "ClaimScope": {
+      "properties": {
+        "domain": {
+          "title": "Domain",
+          "type": "string"
+        },
+        "boundaries": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Boundaries",
+          "type": "array"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "default": "shared"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "title": "ClaimScope",
+      "type": "object"
+    },
+    "ConfidenceEstimate": {
+      "properties": {
+        "label": {
+          "$ref": "#/$defs/ConfidenceLabel"
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rationale"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "ConfidenceEstimate",
+      "type": "object"
+    },
+    "ConfidenceLabel": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "ConfidenceLabel",
+      "type": "string"
+    },
+    "ContributorRef": {
+      "properties": {
+        "actor_id": {
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/ContributorRole"
+        },
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        }
+      },
+      "required": [
+        "actor_id",
+        "role"
+      ],
+      "title": "ContributorRef",
+      "type": "object"
+    },
+    "ContributorRole": {
+      "enum": [
+        "author",
+        "synthesizer",
+        "reviewer",
+        "observer",
+        "operator"
+      ],
+      "title": "ContributorRole",
+      "type": "string"
+    },
+    "EpistemicAlignmentAxis": {
+      "properties": {
+        "axis_id": {
+          "default": "haic.axis.epistemic-grounding.v0",
+          "title": "Axis Id",
+          "type": "string"
+        },
+        "name": {
+          "default": "epistemic_grounding",
+          "title": "Name",
+          "type": "string"
+        },
+        "commitments": {
+          "items": {
+            "$ref": "#/$defs/AlignmentCommitment"
+          },
+          "title": "Commitments",
+          "type": "array"
+        },
+        "orientation": {
+          "minLength": 1,
+          "title": "Orientation",
+          "type": "string"
+        },
+        "mode": {
+          "$ref": "#/$defs/AlignmentMode",
+          "default": "geometric_orientation"
+        },
+        "signals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Signals",
+          "type": "array"
+        },
+        "anti_goals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Anti Goals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "orientation"
+      ],
+      "title": "EpistemicAlignmentAxis",
+      "type": "object"
+    },
+    "EvidencePacket": {
+      "properties": {
+        "schema_version": {
+          "const": "haic.knowledge_packet.v0",
+          "default": "haic.knowledge_packet.v0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "packet_id": {
+          "pattern": "^[a-z0-9._:-]+$",
+          "title": "Packet Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "evidence",
+          "default": "evidence",
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/KnowledgeStatus",
+          "default": "provisional"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "default": "shared"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "alignment_axis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EpistemicAlignmentAxis"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "provenance": {
+          "$ref": "#/$defs/ProvenanceEnvelope"
+        },
+        "links": {
+          "$ref": "#/$defs/PacketLinks"
+        },
+        "evidence_type": {
+          "$ref": "#/$defs/EvidenceType"
+        },
+        "observation": {
+          "minLength": 1,
+          "title": "Observation",
+          "type": "string"
+        },
+        "method": {
+          "minLength": 1,
+          "title": "Method",
+          "type": "string"
+        },
+        "artifact_uri": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Uri"
+        },
+        "captured_at": {
+          "format": "date-time",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "integrity_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Integrity Hash"
+        },
+        "ledger_refs": {
+          "items": {
+            "$ref": "#/$defs/LedgerRef"
+          },
+          "title": "Ledger Refs",
+          "type": "array"
+        },
+        "target_packet_ids": {
+          "items": {
+            "pattern": "^[a-z0-9._:-]+$",
+            "type": "string"
+          },
+          "title": "Target Packet Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "packet_id",
+        "created_at",
+        "updated_at",
+        "title",
+        "provenance",
+        "evidence_type",
+        "observation",
+        "method",
+        "captured_at"
+      ],
+      "title": "EvidencePacket",
+      "type": "object"
+    },
+    "EvidenceType": {
+      "enum": [
+        "observation",
+        "experiment",
+        "measurement",
+        "citation",
+        "receipt",
+        "trace",
+        "lived_report"
+      ],
+      "title": "EvidenceType",
+      "type": "string"
+    },
+    "KnowledgeStatus": {
+      "enum": [
+        "provisional",
+        "active",
+        "disputed",
+        "superseded",
+        "archived"
+      ],
+      "title": "KnowledgeStatus",
+      "type": "string"
+    },
+    "LedgerRef": {
+      "properties": {
+        "ledger_id": {
+          "title": "Ledger Id",
+          "type": "string"
+        },
+        "entry_id": {
+          "title": "Entry Id",
+          "type": "string"
+        },
+        "immutable": {
+          "default": true,
+          "title": "Immutable",
+          "type": "boolean"
+        },
+        "locator": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Locator"
+        }
+      },
+      "required": [
+        "ledger_id",
+        "entry_id"
+      ],
+      "title": "LedgerRef",
+      "type": "object"
+    },
+    "ObjectionPacket": {
+      "properties": {
+        "schema_version": {
+          "const": "haic.knowledge_packet.v0",
+          "default": "haic.knowledge_packet.v0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "packet_id": {
+          "pattern": "^[a-z0-9._:-]+$",
+          "title": "Packet Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "objection",
+          "default": "objection",
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/KnowledgeStatus",
+          "default": "provisional"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "default": "shared"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "alignment_axis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EpistemicAlignmentAxis"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "provenance": {
+          "$ref": "#/$defs/ProvenanceEnvelope"
+        },
+        "links": {
+          "$ref": "#/$defs/PacketLinks"
+        },
+        "target_packet_id": {
+          "pattern": "^[a-z0-9._:-]+$",
+          "title": "Target Packet Id",
+          "type": "string"
+        },
+        "objection_type": {
+          "$ref": "#/$defs/ObjectionType"
+        },
+        "argument": {
+          "minLength": 1,
+          "title": "Argument",
+          "type": "string"
+        },
+        "requested_resolution": {
+          "$ref": "#/$defs/ResolutionRequest",
+          "default": "review"
+        },
+        "supporting_packet_ids": {
+          "items": {
+            "pattern": "^[a-z0-9._:-]+$",
+            "type": "string"
+          },
+          "title": "Supporting Packet Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "packet_id",
+        "created_at",
+        "updated_at",
+        "title",
+        "provenance",
+        "target_packet_id",
+        "objection_type",
+        "argument"
+      ],
+      "title": "ObjectionPacket",
+      "type": "object"
+    },
+    "ObjectionType": {
+      "enum": [
+        "factual",
+        "methodological",
+        "interpretive",
+        "scope",
+        "consent"
+      ],
+      "title": "ObjectionType",
+      "type": "string"
+    },
+    "PacketLinks": {
+      "properties": {
+        "supports": {
+          "items": {
+            "pattern": "^[a-z0-9._:-]+$",
+            "type": "string"
+          },
+          "title": "Supports",
+          "type": "array"
+        },
+        "challenges": {
+          "items": {
+            "pattern": "^[a-z0-9._:-]+$",
+            "type": "string"
+          },
+          "title": "Challenges",
+          "type": "array"
+        },
+        "revises": {
+          "items": {
+            "pattern": "^[a-z0-9._:-]+$",
+            "type": "string"
+          },
+          "title": "Revises",
+          "type": "array"
+        },
+        "supersedes": {
+          "items": {
+            "pattern": "^[a-z0-9._:-]+$",
+            "type": "string"
+          },
+          "title": "Supersedes",
+          "type": "array"
+        },
+        "related": {
+          "items": {
+            "pattern": "^[a-z0-9._:-]+$",
+            "type": "string"
+          },
+          "title": "Related",
+          "type": "array"
+        }
+      },
+      "title": "PacketLinks",
+      "type": "object"
+    },
+    "ProvenanceEnvelope": {
+      "properties": {
+        "contributors": {
+          "items": {
+            "$ref": "#/$defs/ContributorRef"
+          },
+          "minItems": 1,
+          "title": "Contributors",
+          "type": "array"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "derived_from": {
+          "items": {
+            "pattern": "^[a-z0-9._:-]+$",
+            "type": "string"
+          },
+          "title": "Derived From",
+          "type": "array"
+        },
+        "created_by_mode": {
+          "default": "human",
+          "enum": [
+            "human",
+            "agent",
+            "hybrid"
+          ],
+          "title": "Created By Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contributors"
+      ],
+      "title": "ProvenanceEnvelope",
+      "type": "object"
+    },
+    "ResolutionRequest": {
+      "enum": [
+        "review",
+        "revise",
+        "narrow_scope",
+        "retract",
+        "no_action"
+      ],
+      "title": "ResolutionRequest",
+      "type": "string"
+    },
+    "RevisionChange": {
+      "properties": {
+        "field_path": {
+          "minLength": 1,
+          "title": "Field Path",
+          "type": "string"
+        },
+        "previous_value": {
+          "anyOf": [
+            {},
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Previous Value"
+        },
+        "new_value": {
+          "anyOf": [
+            {},
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "New Value"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field_path",
+        "reason"
+      ],
+      "title": "RevisionChange",
+      "type": "object"
+    },
+    "RevisionPacket": {
+      "properties": {
+        "schema_version": {
+          "const": "haic.knowledge_packet.v0",
+          "default": "haic.knowledge_packet.v0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "packet_id": {
+          "pattern": "^[a-z0-9._:-]+$",
+          "title": "Packet Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "revision",
+          "default": "revision",
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/KnowledgeStatus",
+          "default": "provisional"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "default": "shared"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "alignment_axis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EpistemicAlignmentAxis"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "provenance": {
+          "$ref": "#/$defs/ProvenanceEnvelope"
+        },
+        "links": {
+          "$ref": "#/$defs/PacketLinks"
+        },
+        "target_packet_id": {
+          "pattern": "^[a-z0-9._:-]+$",
+          "title": "Target Packet Id",
+          "type": "string"
+        },
+        "change_summary": {
+          "minLength": 1,
+          "title": "Change Summary",
+          "type": "string"
+        },
+        "resulting_status": {
+          "$ref": "#/$defs/KnowledgeStatus"
+        },
+        "changes": {
+          "items": {
+            "$ref": "#/$defs/RevisionChange"
+          },
+          "minItems": 1,
+          "title": "Changes",
+          "type": "array"
+        },
+        "supersedes_target": {
+          "default": true,
+          "title": "Supersedes Target",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "packet_id",
+        "created_at",
+        "updated_at",
+        "title",
+        "provenance",
+        "target_packet_id",
+        "change_summary",
+        "resulting_status",
+        "changes"
+      ],
+      "title": "RevisionPacket",
+      "type": "object"
+    },
+    "SourceRef": {
+      "properties": {
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_type": {
+          "title": "Source Type",
+          "type": "string"
+        },
+        "locator": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Locator"
+        },
+        "citation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Citation"
+        },
+        "integrity_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Integrity Hash"
+        },
+        "immutable": {
+          "default": false,
+          "title": "Immutable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "source_id",
+        "source_type"
+      ],
+      "title": "SourceRef",
+      "type": "object"
+    },
+    "Visibility": {
+      "enum": [
+        "private",
+        "shared",
+        "public",
+        "agent_scoped"
+      ],
+      "title": "Visibility",
+      "type": "string"
+    }
+  },
+  "discriminator": {
+    "mapping": {
+      "claim": "#/$defs/ClaimPacket",
+      "evidence": "#/$defs/EvidencePacket",
+      "objection": "#/$defs/ObjectionPacket",
+      "revision": "#/$defs/RevisionPacket"
+    },
+    "propertyName": "kind"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/ClaimPacket"
+    },
+    {
+      "$ref": "#/$defs/EvidencePacket"
+    },
+    {
+      "$ref": "#/$defs/ObjectionPacket"
+    },
+    {
+      "$ref": "#/$defs/RevisionPacket"
+    }
+  ],
+  "title": "KnowledgePacketDocument",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://humanaiconvention.com/specs/haic/knowledge-packet.v0.schema.json"
+}

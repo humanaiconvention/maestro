@@ -1,0 +1,88 @@
+{
+  "schema_version": "haic.knowledge_packet.v0",
+  "packet_id": "haic.revision.semantic-viability-condition.v1",
+  "kind": "revision",
+  "status": "active",
+  "created_at": "2026-03-13T12:15:00Z",
+  "updated_at": "2026-03-13T12:15:00Z",
+  "title": "Revision narrowing the semantic viability claim",
+  "summary": "Narrows the original claim to recursive language-model systems while preserving the core grounding thesis.",
+  "visibility": "shared",
+  "tags": [
+    "revision",
+    "scope",
+    "semantic-grounding"
+  ],
+  "alignment_axis": {
+    "axis_id": "haic.axis.epistemic-grounding.v0",
+    "name": "epistemic_grounding",
+    "commitments": [
+      "honesty",
+      "accuracy",
+      "reliability",
+      "verifiability",
+      "falsifiability",
+      "usefulness",
+      "scientific_grounding",
+      "first_principles_reasoning"
+    ],
+    "orientation": "Aim toward revisions that improve fit to evidence without erasing the path by which the belief changed.",
+    "mode": "geometric_orientation",
+    "signals": [
+      "Preserve revision lineage.",
+      "State what changed and why.",
+      "Keep the revised scope closer to what can actually be supported."
+    ],
+    "anti_goals": [
+      "Silent overwrite.",
+      "Revision without reasons.",
+      "A cleaner story achieved by hiding prior error."
+    ]
+  },
+  "provenance": {
+    "contributors": [
+      {
+        "actor_id": "human:editor",
+        "role": "author",
+        "display_name": "Revision Editor"
+      }
+    ],
+    "sources": [
+      {
+        "source_id": "packet:haic.objection.synthetic-self-correction.v0",
+        "source_type": "objection",
+        "locator": "haic.objection.synthetic-self-correction.v0",
+        "immutable": true
+      }
+    ],
+    "derived_from": [
+      "haic.claim.semantic-viability-condition.v0"
+    ],
+    "created_by_mode": "human"
+  },
+  "links": {
+    "supports": [],
+    "challenges": [],
+    "revises": [
+      "haic.claim.semantic-viability-condition.v0"
+    ],
+    "supersedes": [
+      "haic.claim.semantic-viability-condition.v0"
+    ],
+    "related": [
+      "haic.objection.synthetic-self-correction.v0"
+    ]
+  },
+  "target_packet_id": "haic.claim.semantic-viability-condition.v0",
+  "change_summary": "Scope narrowed to recursive language-model systems pending broader architectural evidence.",
+  "resulting_status": "active",
+  "changes": [
+    {
+      "field_path": "scope.domain",
+      "previous_value": "recursive systems",
+      "new_value": "recursive language-model systems",
+      "reason": "The objection highlighted overgeneralization beyond current empirical support."
+    }
+  ],
+  "supersedes_target": true
+}

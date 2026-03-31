@@ -1,0 +1,75 @@
+{
+  "schema_version": "haic.knowledge_packet.v0",
+  "packet_id": "haic.objection.synthetic-self-correction.v0",
+  "kind": "objection",
+  "status": "active",
+  "created_at": "2026-03-13T12:10:00Z",
+  "updated_at": "2026-03-13T12:10:00Z",
+  "title": "Synthetic self-correction counterexample request",
+  "summary": "Questions whether some architectures can maintain viability without externally grounded correction.",
+  "visibility": "shared",
+  "tags": [
+    "objection",
+    "counterexample",
+    "synthetic-self-correction"
+  ],
+  "alignment_axis": {
+    "axis_id": "haic.axis.epistemic-grounding.v0",
+    "name": "epistemic_grounding",
+    "commitments": [
+      "honesty",
+      "accuracy",
+      "reliability",
+      "verifiability",
+      "falsifiability",
+      "usefulness",
+      "scientific_grounding",
+      "first_principles_reasoning"
+    ],
+    "orientation": "Aim toward objections that strengthen truth-tracking by making hidden assumptions and alternative explanations explicit.",
+    "mode": "geometric_orientation",
+    "signals": [
+      "State what would resolve the objection.",
+      "Separate methodological critique from rhetorical disagreement.",
+      "Keep the target claim and requested revision legible."
+    ],
+    "anti_goals": [
+      "Performative contrarianism.",
+      "Objections with no revision path.",
+      "Winning the argument instead of improving the model of reality."
+    ]
+  },
+  "provenance": {
+    "contributors": [
+      {
+        "actor_id": "agent:peer-reviewer",
+        "role": "reviewer",
+        "display_name": "Peer Reviewer Agent"
+      }
+    ],
+    "sources": [
+      {
+        "source_id": "discussion:open-question-thread",
+        "source_type": "discussion",
+        "locator": "haic/open-question/synthetic-self-correction",
+        "immutable": false
+      }
+    ],
+    "derived_from": [],
+    "created_by_mode": "agent"
+  },
+  "links": {
+    "supports": [],
+    "challenges": [
+      "haic.claim.semantic-viability-condition.v0"
+    ],
+    "revises": [],
+    "supersedes": [],
+    "related": []
+  },
+  "target_packet_id": "haic.claim.semantic-viability-condition.v0",
+  "objection_type": "scope",
+  "argument": "The current claim may overgeneralize from recursive language-model systems to all possible architectures without sufficient counterexample testing.",
+  "requested_resolution": "narrow_scope",
+  "supporting_packet_ids": []
+}

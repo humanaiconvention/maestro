@@ -1,3 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "maestro"
+version = "0.1.0"
+description = "Maestro — HumanAI Convention orchestration layer (gateway, worker, settlement)."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "HumanAI Convention contributors" }
+]
+
+[tool.setuptools]
+# Flat layout: maestro/ is the package root. Editable install adds maestro/ to
+# sys.path so that `from libs.xxx import ...` and `from apps.xxx import ...`
+# resolve correctly without sys.path hacks in scripts.
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+namespaces = true   # namespace packages — no __init__.py required at every level
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.28",   # test client transport for FastAPI TestClient
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests", "legacy_mvp/tests", "legacy_mvp/services/identity_api/tests"]
 pythonpath = [".", "legacy_mvp", "legacy_mvp/services/identity_api"]

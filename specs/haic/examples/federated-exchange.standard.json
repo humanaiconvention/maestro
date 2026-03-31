@@ -1,0 +1,257 @@
+{
+  "schema_version": "haic.federated_exchange_standard.v0",
+  "standard_id": "haic.standard.federated-exchange.v0",
+  "title": "HAIC Federated Exchange Standard",
+  "status": "active",
+  "purpose": "Keep HAIC federated, distributed, open, transparent, and continuously revisable by ensuring raw contribution data remains at the consenting edge while the shared system stores only verification and optimization artifacts.",
+  "summary": "The convention should coordinate over receipts, attestations, challenge paths, and optimization signals rather than quietly centralizing the lived data that gave rise to them.",
+  "commitments": [
+    "federated_exchange",
+    "distributed_control",
+    "open_protocols",
+    "transparent_verification",
+    "participant_data_sovereignty",
+    "verification_minimization",
+    "portable_receipts",
+    "continuous_revision"
+  ],
+  "prohibited_patterns": [
+    {
+      "prohibition_id": "no-central-payload-hoarding",
+      "kind": "central_payload_hoarding",
+      "description": "The shared HAIC system must not centralize raw lived payloads that can remain in the consenting edge exchange.",
+      "detection_signals": [
+        "Contributions arrive with full raw payloads despite a verification-only covenant.",
+        "Operators begin relying on central replay of participant content."
+      ],
+      "response_actions": [
+        "Block the write path.",
+        "Escalate for review.",
+        "Revise the covenant or runtime boundary."
+      ]
+    },
+    {
+      "prohibition_id": "no-silent-replication",
+      "kind": "silent_payload_retention",
+      "description": "Replication of raw payloads into logs, analytics, or downstream storage without explicit disclosure is prohibited.",
+      "detection_signals": [
+        "Logs contain plaintext contribution bodies.",
+        "Analytics exports contain participant payload excerpts."
+      ],
+      "response_actions": [
+        "Quarantine the artifacts.",
+        "Notify participants and operators.",
+        "Open a revision path."
+      ]
+    },
+    {
+      "prohibition_id": "no-opaque-verification",
+      "kind": "opaque_verification",
+      "description": "Verification tokens and optimization signals must remain inspectable enough to challenge, not become a new opaque extraction layer.",
+      "detection_signals": [
+        "A proof can pass without a visible challenge path.",
+        "Operators cannot explain what a stored token means."
+      ],
+      "response_actions": [
+        "Move the flow to review.",
+        "Require additional documentation or receipts."
+      ]
+    },
+    {
+      "prohibition_id": "no-closed-protocol-dependency",
+      "kind": "closed_protocol_dependency",
+      "description": "Federation should not collapse into one opaque vendor, one private format, or one operator-controlled interface.",
+      "detection_signals": [
+        "Participants cannot export receipts or tokens.",
+        "Critical interoperability depends on undocumented private behavior."
+      ],
+      "response_actions": [
+        "Require export and documentation work before broadening scope."
+      ]
+    }
+  ],
+  "required_controls": [
+    {
+      "control_id": "edge-data-flow",
+      "commitment": "federated_exchange",
+      "description": "Raw contribution data should flow directly between consenting humans and agents or their explicitly trusted local runtimes, not through the shared HAIC ledger by default.",
+      "layers": [
+        "private_envoy_runtime",
+        "participation_covenant",
+        "maestro_api"
+      ],
+      "enforcement": "runtime_block",
+      "verification_signals": [
+        "verification_only storage mode active",
+        "edge exchange required",
+        "no raw payload present in central contribution records"
+      ]
+    },
+    {
+      "control_id": "token-only-ledger",
+      "commitment": "verification_minimization",
+      "description": "The shared system may store verification tokens, attestations, optimization metrics, receipts, and lineage pointers, but not raw payloads in verification-only flows.",
+      "layers": [
+        "knowledge_ledger",
+        "maestro_api",
+        "audit_ledger"
+      ],
+      "enforcement": "runtime_block",
+      "verification_signals": [
+        "allowed artifact classes declared",
+        "raw artifact classes rejected",
+        "receipts remain inspectable"
+      ]
+    },
+    {
+      "control_id": "open-artifact-portability",
+      "commitment": "open_protocols",
+      "description": "Receipts, covenants, packets, and verification artifacts should be exportable in documented formats.",
+      "layers": [
+        "public_docs",
+        "knowledge_ledger",
+        "audit_ledger"
+      ],
+      "enforcement": "audit_only",
+      "verification_signals": [
+        "json schema published",
+        "examples checked in",
+        "export path documented"
+      ]
+    },
+    {
+      "control_id": "continuous-revision-loop",
+      "commitment": "continuous_revision",
+      "description": "Federated exchange rules should stay challengeable and revisable as humans and agents participate.",
+      "layers": [
+        "public_docs",
+        "participation_covenant",
+        "review_queue",
+        "monitoring_metrics"
+      ],
+      "enforcement": "manual_review",
+      "verification_signals": [
+        "objection and revision packet paths exist",
+        "standards can be superseded cleanly"
+      ]
+    }
+  ],
+  "allowed_system_artifacts": [
+    "verification_token",
+    "cryptographic_attestation",
+    "measurement_summary",
+    "optimization_metric",
+    "audit_receipt",
+    "consent_receipt",
+    "revocation_receipt",
+    "lineage_pointer",
+    "challenge_artifact"
+  ],
+  "disallowed_system_artifacts": [
+    "raw_content",
+    "full_transcript",
+    "model_training_corpus",
+    "biometric_raw_capture",
+    "plaintext_secret"
+  ],
+  "default_memory_policy": {
+    "retention_mode": "bounded",
+    "max_retention_days": 30,
+    "allow_training": false,
+    "allow_cross_covenant_reuse": false,
+    "require_disclosure": true,
+    "central_storage_mode": "verification_only",
+    "allowed_central_artifacts": [
+      "verification_token",
+      "cryptographic_attestation",
+      "measurement_summary",
+      "optimization_metric",
+      "audit_receipt",
+      "consent_receipt",
+      "revocation_receipt",
+      "lineage_pointer",
+      "challenge_artifact"
+    ],
+    "edge_exchange_required": true,
+    "allow_operator_plaintext_access": false
+  },
+  "transparency_requirements": [
+    "Participants can see what artifact classes enter the shared system.",
+    "Verification tokens have plain-language documentation and challenge paths.",
+    "Launch posture stays honest about which flows remain transitional and which are federated."
+  ],
+  "evolution_requirements": [
+    "The standard can be revised through objection and revision packets.",
+    "Federated exchange controls should improve as real participation reveals edge cases.",
+    "No single founder, operator, or agent should be the only route by which the standard can change."
+  ],
+  "architecture_stack": [
+    {
+      "layer": "public_website",
+      "intent": "Explain that HAIC is designed to coordinate over proofs and receipts rather than centralizing participant data.",
+      "required_artifacts": [
+        "public security and runtime pages",
+        "plain-language values and boundary statements"
+      ],
+      "required_controls": [
+        "truthful launch posture",
+        "no dark-pattern participation pressure"
+      ],
+      "review_questions": [
+        "Does the public site imply HAIC will hold participant data centrally when it should not?"
+      ]
+    },
+    {
+      "layer": "participation_covenant",
+      "intent": "Declare whether the relationship is verification-only and what artifacts may enter shared storage.",
+      "required_artifacts": [
+        "memory policy",
+        "proof requirements",
+        "recovery path"
+      ],
+      "required_controls": [
+        "edge exchange requirement",
+        "raw artifact prohibition"
+      ],
+      "review_questions": [
+        "Can participants tell what stays at the edge and what enters the system?"
+      ]
+    },
+    {
+      "layer": "maestro_api",
+      "intent": "Accept verification-only contributions without requiring central raw payload storage.",
+      "required_artifacts": [
+        "storage mode",
+        "verification tokens",
+        "optimization metrics"
+      ],
+      "required_controls": [
+        "runtime validation",
+        "audit events"
+      ],
+      "review_questions": [
+        "Can the API operate on receipts and metrics alone when the covenant requires it?"
+      ]
+    },
+    {
+      "layer": "review_queue",
+      "intent": "Let operators inspect the doctrine/evidence boundary without replaying participant raw data.",
+      "required_artifacts": [
+        "packet ids",
+        "covenant ids",
+        "token and metric summaries"
+      ],
+      "required_controls": [
+        "no raw payload exposure in verification-only mode",
+        "visible challenge path"
+      ],
+      "review_questions": [
+        "Can an operator understand the decision boundary without central raw content access?"
+      ]
+    }
+  ],
+  "metadata": {
+    "launch_posture": "recommended baseline for federated HAIC exchanges",
+    "notes": "Verification-only central storage is the preferred default when lived data can remain at the consenting edge."
+  }
+}

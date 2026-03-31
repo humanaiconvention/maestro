@@ -1,0 +1,107 @@
+{
+  "schema_version": "haic.knowledge_packet.v0",
+  "packet_id": "haic.claim.semantic-viability-condition.v0",
+  "kind": "claim",
+  "status": "provisional",
+  "created_at": "2026-03-13T12:00:00Z",
+  "updated_at": "2026-03-13T12:00:00Z",
+  "title": "Semantic Viability Condition",
+  "summary": "Grounded corrective capacity is required to bound recursive semantic drift.",
+  "visibility": "shared",
+  "tags": [
+    "semantic-grounding",
+    "viability",
+    "recursive-systems"
+  ],
+  "alignment_axis": {
+    "axis_id": "haic.axis.epistemic-grounding.v0",
+    "name": "epistemic_grounding",
+    "commitments": [
+      "honesty",
+      "accuracy",
+      "reliability",
+      "verifiability",
+      "falsifiability",
+      "usefulness",
+      "scientific_grounding",
+      "first_principles_reasoning"
+    ],
+    "orientation": "Aim toward honest, accurate, reliable, verifiable, falsifiable, and useful knowledge grounded in science and first principles.",
+    "mode": "geometric_orientation",
+    "signals": [
+      "State what evidence would revise the claim.",
+      "Keep scope limits visible.",
+      "Link the claim to inspectable sources and update conditions."
+    ],
+    "anti_goals": [
+      "Fabricated certainty.",
+      "Unverifiable theory language.",
+      "Conceptual elegance detached from evidence."
+    ]
+  },
+  "provenance": {
+    "contributors": [
+      {
+        "actor_id": "human:founder",
+        "role": "author",
+        "display_name": "Founding Drafter"
+      },
+      {
+        "actor_id": "agent:envoy",
+        "role": "synthesizer",
+        "display_name": "HAIC Envoy"
+      }
+    ],
+    "sources": [
+      {
+        "source_id": "paper:semantic-grounding-latest",
+        "source_type": "draft_paper",
+        "locator": "Semantic Grounding and the Preservation of Information in Recursive Systems",
+        "immutable": true
+      },
+      {
+        "source_id": "artifact:sgt-silent-semantic-drift",
+        "source_type": "experiment_result",
+        "locator": "sgt/results/prism_trajectory.json",
+        "immutable": true
+      }
+    ],
+    "derived_from": [],
+    "created_by_mode": "hybrid"
+  },
+  "links": {
+    "supports": [
+      "haic.protocol.grounded-correction.v0"
+    ],
+    "challenges": [],
+    "revises": [],
+    "supersedes": [],
+    "related": [
+      "haic.question.synthetic-self-correction.v0"
+    ]
+  },
+  "statement": "Recursive systems require access to grounded corrective capacity or semantic drift eventually exceeds viable bounds.",
+  "scope": {
+    "domain": "recursive language-model systems",
+    "boundaries": [
+      "not yet proven for all architectures",
+      "not a total theory of cognition"
+    ],
+    "visibility": "shared"
+  },
+  "confidence": {
+    "label": "medium",
+    "rationale": "Supported by current conceptual work, SGT results, and PRISM measurements, but still open to mechanistic revision."
+  },
+  "update_conditions": [
+    "Revise if contrary empirical evidence appears.",
+    "Revise if a better causal account replaces the current framing."
+  ],
+  "supporting_packet_ids": [
+    "haic.evidence.sgt-silent-drift.v0",
+    "haic.evidence.prism-entropy-trajectory.v0"
+  ],
+  "challenge_packet_ids": [
+    "haic.objection.synthetic-self-correction.v0"
+  ]
+}

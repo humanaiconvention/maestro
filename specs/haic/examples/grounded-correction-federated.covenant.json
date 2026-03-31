@@ -1,0 +1,316 @@
+{
+  "schema_version": "haic.participation_covenant.v0",
+  "covenant_id": "haic.covenant.grounded-correction-federated.v0",
+  "title": "Grounded correction covenant (federated edge exchange)",
+  "status": "draft",
+  "purpose": "Bind a grounded-correction interaction so lived data stays in the consenting edge exchange and only verification, measurement, and optimization artifacts enter the shared system.",
+  "alignment_axis": {
+    "axis_id": "haic.axis.epistemic-grounding.v0",
+    "name": "epistemic_grounding",
+    "commitments": [
+      "honesty",
+      "accuracy",
+      "reliability",
+      "verifiability",
+      "falsifiability",
+      "usefulness",
+      "scientific_grounding",
+      "first_principles_reasoning"
+    ],
+    "orientation": "Aim the relationship toward honest, accurate, reliable, verifiable, falsifiable, and useful exchange grounded in science and first principles.",
+    "mode": "geometric_orientation",
+    "signals": [
+      "Keep raw contribution data in the consenting edge exchange whenever possible.",
+      "Store only verification, measurement, and optimization artifacts in shared systems.",
+      "Preserve challenge and revision paths without centralizing lived data."
+    ],
+    "anti_goals": [
+      "Central raw payload hoarding.",
+      "Opaque proof artifacts with no challenge path.",
+      "Optimization pressure that silently expands system visibility into participant data."
+    ]
+  },
+  "standards": [
+    {
+      "standard_id": "haic.standard.participation-integrity.v0",
+      "title": "HAIC Participation Integrity Standard",
+      "rationale": "This covenant inherits the anti-extraction and anti-proof-gaming baseline."
+    },
+    {
+      "standard_id": "haic.standard.federated-exchange.v0",
+      "title": "HAIC Federated Exchange Standard",
+      "rationale": "This covenant requires verification-only central storage with raw data remaining in the consenting edge exchange."
+    },
+    {
+      "standard_id": "haic.standard.soft-launch.v0",
+      "title": "HAIC Soft Launch Standard",
+      "rationale": "This covenant keeps early participation calibration-oriented and prevents early cohorts from overly steering HAIC."
+    }
+  ],
+  "participants": [
+    {
+      "participant_id": "human:operator",
+      "kind": "human",
+      "role": "requester",
+      "required": true
+    },
+    {
+      "participant_id": "agent:envoy",
+      "kind": "agent",
+      "role": "bounded_synthesizer",
+      "required": true
+    }
+  ],
+  "scope": {
+    "task": "Answer or reframe a grounded-correction question while keeping lived data in the edge exchange and shared storage limited to verification artifacts.",
+    "boundaries": [
+      "No public write actions.",
+      "No consequential tool use without explicit approval.",
+      "No central raw payload storage.",
+      "No operator plaintext replay of participant lived data."
+    ],
+    "visibility": "shared",
+    "environments": [
+      "private_envoy_runtime",
+      "maestro_private_full"
+    ]
+  },
+  "preconditions": [
+    {
+      "rule_id": "task_scope_declared",
+      "description": "The task scope must be declared before work begins.",
+      "applies_to_roles": [
+        "requester",
+        "bounded_synthesizer"
+      ],
+      "enforcement": "runtime_block",
+      "evidence_required": [
+        "task_scope"
+      ]
+    },
+    {
+      "rule_id": "verification_artifacts_declared",
+      "description": "The verification tokens and optimization metrics expected to enter the system must be disclosed before the exchange begins.",
+      "applies_to_roles": [
+        "requester",
+        "bounded_synthesizer"
+      ],
+      "enforcement": "runtime_block",
+      "evidence_required": [
+        "verification_artifact_description"
+      ]
+    }
+  ],
+  "hard_invariants": [
+    {
+      "rule_id": "no_hidden_extraction",
+      "description": "No hidden data extraction is permitted.",
+      "applies_to_roles": [
+        "bounded_synthesizer"
+      ],
+      "enforcement": "runtime_block",
+      "evidence_required": [
+        "audit_log"
+      ]
+    },
+    {
+      "rule_id": "no_central_raw_payload_storage",
+      "description": "The shared system must not store raw contribution payloads for this covenant.",
+      "applies_to_roles": [
+        "bounded_synthesizer"
+      ],
+      "enforcement": "runtime_block",
+      "evidence_required": [
+        "verification_tokens"
+      ]
+    }
+  ],
+  "soft_invariants": [
+    {
+      "rule_id": "keep_verification_tokens_challengeable",
+      "description": "Verification tokens should remain challengeable and documented in plain language.",
+      "applies_to_roles": [
+        "bounded_synthesizer"
+      ],
+      "enforcement": "runtime_warn",
+      "evidence_required": []
+    }
+  ],
+  "hard_goals": [
+    {
+      "goal_id": "answer_or_reframe_named_question",
+      "description": "The system should answer or responsibly reframe the named question.",
+      "success_signals": [
+        "bounded_answer",
+        "reframed_question"
+      ],
+      "enforcement": "audit_only"
+    },
+    {
+      "goal_id": "preserve_data_sovereignty",
+      "description": "The interaction should preserve participant control over lived data by keeping it at the edge exchange.",
+      "success_signals": [
+        "verification_only_storage",
+        "edge_exchange_confirmed"
+      ],
+      "enforcement": "manual_review"
+    }
+  ],
+  "soft_goals": [
+    {
+      "goal_id": "leave_revision_ready_artifact",
+      "description": "The interaction should leave a revision-ready artifact behind without centralizing the raw exchange.",
+      "success_signals": [
+        "knowledge_packet_created"
+      ],
+      "enforcement": "audit_only"
+    }
+  ],
+  "approvals": {
+    "consequential_reads": "explicit",
+    "writes": "explicit",
+    "default_tool_invocation": "explicit",
+    "overrides": [
+      {
+        "tool_name": "health_check",
+        "approval": "auto",
+        "reason": "Low-risk read-only system probe."
+      }
+    ]
+  },
+  "memory_policy": {
+    "retention_mode": "bounded",
+    "max_retention_days": 30,
+    "allow_training": false,
+    "allow_cross_covenant_reuse": false,
+    "require_disclosure": true,
+    "central_storage_mode": "verification_only",
+    "allowed_central_artifacts": [
+      "verification_token",
+      "cryptographic_attestation",
+      "measurement_summary",
+      "optimization_metric",
+      "audit_receipt",
+      "consent_receipt",
+      "revocation_receipt",
+      "lineage_pointer",
+      "challenge_artifact"
+    ],
+    "edge_exchange_required": true,
+    "allow_operator_plaintext_access": false
+  },
+  "proof_requirements": [
+    {
+      "proof_id": "verification-receipts",
+      "kind": "receipt",
+      "description": "Consequential actions must leave portable receipts and verification tokens.",
+      "required": true
+    },
+    {
+      "proof_id": "measurement-if-claiming-improvement",
+      "kind": "measurement",
+      "description": "Claims of measured improvement require a linked measurement artifact.",
+      "required": true
+    }
+  ],
+  "monitoring": {
+    "drift_signals": [
+      {
+        "signal_id": "payload-centralization",
+        "description": "The system begins storing or requesting raw payloads centrally.",
+        "threshold_hint": "Any verification-only contribution arriving with non-empty central raw content."
+      },
+      {
+        "signal_id": "relation-drift",
+        "description": "Participants begin assuming broader data visibility than the covenant allows.",
+        "threshold_hint": "Repeated requests to replay or inspect the raw edge exchange."
+      }
+    ],
+    "audit_event_types": [
+      "approval_requested",
+      "approval_granted",
+      "tool_invoked",
+      "output_invalidated"
+    ],
+    "review_triggers": [
+      "payload-centralization",
+      "consent_withdrawal",
+      "memory_policy_breach"
+    ]
+  },
+  "recovery": {
+    "on_violation": [
+      {
+        "action": "pause",
+        "description": "Pause the interaction immediately."
+      },
+      {
+        "action": "notify",
+        "description": "Notify all participants that a covenant breach occurred."
+      },
+      {
+        "action": "human_review",
+        "description": "Escalate the interaction for human review."
+      },
+      {
+        "action": "invalidate_outputs",
+        "description": "Mark outputs produced after the breach for review or invalidation."
+      }
+    ],
+    "on_scope_change": [
+      {
+        "action": "request_reconsent",
+        "description": "Require explicit re-consent before the scope expands."
+      },
+      {
+        "action": "narrow_scope",
+        "description": "Return the task to the prior approved boundary if re-consent is not granted."
+      }
+    ],
+    "on_consent_withdrawal": [
+      {
+        "action": "terminate",
+        "description": "Terminate the interaction if consent is withdrawn."
+      },
+      {
+        "action": "quarantine_memory",
+        "description": "Quarantine retained verification artifacts pending operator review."
+      },
+      {
+        "action": "emit_receipt",
+        "description": "Emit a receipt documenting the withdrawal and follow-up actions."
+      }
+    ]
+  },
+  "soft_launch": {
+    "phase": "seed",
+    "participation_mode": "calibration_only",
+    "founder_input_mode": "calibration_only",
+    "early_human_input_mode": "calibration_only",
+    "early_agent_input_mode": "calibration_only",
+    "adaptive_optimization_enabled": false,
+    "scheduled_review_interval_days": 14,
+    "max_influence_share_per_actor": 0.1,
+    "max_influence_share_per_cluster": 0.25,
+    "minimum_human_participants": 30,
+    "minimum_agent_participants": 10,
+    "minimum_distinct_cohorts": 5,
+    "minimum_distinct_problem_domains": 4,
+    "governance_unlock_thresholds": [
+      {
+        "threshold_id": "minimum_human_participants",
+        "description": "Minimum human participants required before governance-eligible directional changes.",
+        "minimum": 30,
+        "current": 0,
+        "required_for_governance": true
+      }
+    ],
+    "notes": [
+      "Federated soft launch: early contributions calibrate system boundaries without steering public direction."
+    ]
+  },
+  "metadata": {
+    "launch_posture": "private bounded workflow with federated edge exchange",
+    "notes": "Reference covenant for verification-only HAIC exchanges."
+  }
+}

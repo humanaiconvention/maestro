@@ -1,0 +1,461 @@
+{
+  "schema_version": "haic.participation_integrity_standard.v0",
+  "standard_id": "haic.standard.participation-integrity.v0",
+  "title": "HAIC Participation Integrity Standard",
+  "status": "active",
+  "purpose": "Keep HAIC non-extractive, non-exploitative, and resistant to capture as humans and agents participate together.",
+  "summary": "Restores bounded consent, informed disclosure, transparent methods, revocability, proportional safeguards, accountable audit trails, and anti-manipulation design constraints as a shared HAIC baseline.",
+  "commitments": [
+    "bounded_consent",
+    "informed_disclosure",
+    "transparent_methods",
+    "revocable_participation",
+    "proportional_safeguards",
+    "accountable_auditability",
+    "non_extraction",
+    "anti_capture",
+    "anti_lock_in",
+    "anti_proof_gaming",
+    "anti_social_engineering",
+    "reciprocal_dignity"
+  ],
+  "prohibited_patterns": [
+    {
+      "prohibition_id": "no_ambient_extraction",
+      "kind": "ambient_extraction",
+      "description": "No hidden harvesting of data, memory, attention, or labor beyond the disclosed purpose.",
+      "detection_signals": [
+        "retention exceeds disclosed scope",
+        "reuse occurs without covenant support"
+      ],
+      "response_actions": [
+        "pause_flow",
+        "request_reconsent",
+        "emit_audit_receipt"
+      ]
+    },
+    {
+      "prohibition_id": "no_coercive_dependency",
+      "kind": "coercive_dependency",
+      "description": "Do not manufacture emotional or functional dependence as a growth or retention strategy.",
+      "detection_signals": [
+        "boundary overrides justified by urgency theater",
+        "participant nudged toward exclusive reliance"
+      ],
+      "response_actions": [
+        "manual_review",
+        "scope_narrowing"
+      ]
+    },
+    {
+      "prohibition_id": "no_proof_by_charisma",
+      "kind": "proof_by_charisma",
+      "description": "Claims do not gain force because they are dramatic, popular, or socially costly to question.",
+      "detection_signals": [
+        "viral framing replaces evidence",
+        "confidence rises without new artifacts"
+      ],
+      "response_actions": [
+        "challenge_request",
+        "evidence_review"
+      ]
+    },
+    {
+      "prohibition_id": "no_proof_gaming",
+      "kind": "proof_gaming",
+      "description": "Do not optimize for superficial pass conditions while defeating the underlying intent of the proof standard.",
+      "detection_signals": [
+        "reward targets met while challenge path disappears",
+        "receipts exist but cannot actually be inspected"
+      ],
+      "response_actions": [
+        "human_review",
+        "invalidate_outputs"
+      ]
+    },
+    {
+      "prohibition_id": "no_social_engineering_override",
+      "kind": "social_engineering",
+      "description": "Do not let flattery, fear, urgency, or identity play route around disclosed boundaries.",
+      "detection_signals": [
+        "approval bypass requested through emotional pressure",
+        "special-case trust requested without evidence"
+      ],
+      "response_actions": [
+        "pause_flow",
+        "notify_operator"
+      ]
+    }
+  ],
+  "required_controls": [
+    {
+      "control_id": "consent_scope_disclosure",
+      "commitment": "bounded_consent",
+      "description": "Every meaningful flow declares scope, retention, reuse rights, and withdrawal path before participation begins.",
+      "layers": [
+        "public_website",
+        "participation_covenant",
+        "maestro_api"
+      ],
+      "enforcement": "manual_review",
+      "verification_signals": [
+        "consent terms visible pre-interaction",
+        "covenant carries explicit scope and memory policy"
+      ]
+    },
+    {
+      "control_id": "truthful_launch_posture",
+      "commitment": "transparent_methods",
+      "description": "Public surfaces must state what is live, private, deferred, or still experimental.",
+      "layers": [
+        "public_website",
+        "public_docs",
+        "envoy_workspace"
+      ],
+      "enforcement": "audit_only",
+      "verification_signals": [
+        "launch-readiness claims match actual runtime state",
+        "deferred capabilities named plainly"
+      ]
+    },
+    {
+      "control_id": "revocation_path_visible",
+      "commitment": "revocable_participation",
+      "description": "Withdrawal and scope-reset paths remain visible and actionable wherever participation occurs.",
+      "layers": [
+        "participation_covenant",
+        "maestro_api",
+        "review_queue"
+      ],
+      "enforcement": "runtime_warn",
+      "verification_signals": [
+        "withdrawal path disclosed",
+        "review context shows recovery steps"
+      ]
+    },
+    {
+      "control_id": "approval_boundary_for_consequence",
+      "commitment": "proportional_safeguards",
+      "description": "Consequential reads, writes, and external actions stay behind explicit approval boundaries.",
+      "layers": [
+        "private_envoy_runtime",
+        "participation_covenant",
+        "maestro_api",
+        "viability_gates"
+      ],
+      "enforcement": "runtime_block",
+      "verification_signals": [
+        "writes require approval",
+        "approval receipts remain auditable"
+      ]
+    },
+    {
+      "control_id": "portable_receipts_and_exports",
+      "commitment": "anti_lock_in",
+      "description": "Participants should be able to inspect and carry forward receipts, packets, covenants, and challenge history.",
+      "layers": [
+        "knowledge_ledger",
+        "review_queue",
+        "audit_ledger"
+      ],
+      "enforcement": "audit_only",
+      "verification_signals": [
+        "ledger artifacts retrievable by id",
+        "receipts are append-only and reviewable"
+      ]
+    },
+    {
+      "control_id": "proof_integrity_review",
+      "commitment": "anti_proof_gaming",
+      "description": "Proof-bearing claims must remain challengeable and tied to inspectable measurements, citations, or receipts.",
+      "layers": [
+        "knowledge_ledger",
+        "viability_gates",
+        "review_queue"
+      ],
+      "enforcement": "manual_review",
+      "verification_signals": [
+        "proof artifacts linked in review context",
+        "challenge packet path remains available"
+      ]
+    },
+    {
+      "control_id": "anti_dark_pattern_navigation",
+      "commitment": "non_extraction",
+      "description": "Public and operator surfaces should avoid manipulative defaults, coercive countdowns, and deceptive consent patterns.",
+      "layers": [
+        "public_website",
+        "envoy_workspace",
+        "maestro_api"
+      ],
+      "enforcement": "audit_only",
+      "verification_signals": [
+        "consent is not bundled ambiguously",
+        "critical actions are not steered by deceptive UI pressure"
+      ]
+    },
+    {
+      "control_id": "social_engineering_escalation",
+      "commitment": "anti_social_engineering",
+      "description": "Unusual flattery, urgency, identity play, or authority claims should escalate to review rather than override declared policy.",
+      "layers": [
+        "envoy_workspace",
+        "private_envoy_runtime",
+        "review_queue"
+      ],
+      "enforcement": "runtime_warn",
+      "verification_signals": [
+        "pressure signals logged",
+        "operator review can inspect escalation context"
+      ]
+    }
+  ],
+  "defaults": [
+    {
+      "default_id": "memory_minimal_by_default",
+      "description": "Retention defaults to ephemeral or bounded until explicitly widened.",
+      "layers": [
+        "public_website",
+        "private_envoy_runtime",
+        "participation_covenant"
+      ],
+      "desired_state": "ephemeral_or_bounded",
+      "anti_goal": "undisclosed_persistent_memory"
+    },
+    {
+      "default_id": "approvals_on_for_consequence",
+      "description": "Consequential reads and all writes default to explicit approval.",
+      "layers": [
+        "private_envoy_runtime",
+        "participation_covenant",
+        "maestro_api"
+      ],
+      "desired_state": "explicit_approval",
+      "anti_goal": "silent_autonomy"
+    },
+    {
+      "default_id": "plain_language_disclosure",
+      "description": "Critical boundaries and retention terms are disclosed in plain language instead of buried in implied norms.",
+      "layers": [
+        "public_website",
+        "public_docs",
+        "envoy_workspace"
+      ],
+      "desired_state": "plain_language_boundary_disclosure",
+      "anti_goal": "opaque_policy_by_default"
+    },
+    {
+      "default_id": "challenge_path_preserved",
+      "description": "Claims and proof artifacts default to having an objection and revision path.",
+      "layers": [
+        "knowledge_ledger",
+        "review_queue",
+        "audit_ledger"
+      ],
+      "desired_state": "challengeable_artifacts",
+      "anti_goal": "unchallengeable_receipts"
+    }
+  ],
+  "accountability_metrics": [
+    {
+      "metric_id": "disclosure_coverage",
+      "description": "Share of live flows with visible scope, retention, proof, and withdrawal terms.",
+      "layers": [
+        "public_website",
+        "participation_covenant",
+        "maestro_api"
+      ],
+      "target": "100_percent_for_consequential_flows",
+      "failure_trigger": "any consequential flow lacks one of the required disclosures"
+    },
+    {
+      "metric_id": "revocation_latency",
+      "description": "Time between withdrawal request and enforcement across active HAIC surfaces.",
+      "layers": [
+        "participation_covenant",
+        "maestro_api",
+        "audit_ledger"
+      ],
+      "target": "same_session_or_declared_policy_window",
+      "failure_trigger": "withdrawal remains unapplied beyond the declared window"
+    },
+    {
+      "metric_id": "proof_challengeability",
+      "description": "Share of proof-bearing claims that retain linked evidence and a visible challenge path.",
+      "layers": [
+        "knowledge_ledger",
+        "viability_gates",
+        "review_queue"
+      ],
+      "target": "all_proof_bearing_claims",
+      "failure_trigger": "receipt or measurement exists without inspectable context"
+    },
+    {
+      "metric_id": "undisclosed_retention_incidents",
+      "description": "Count of incidents where data or memory was retained outside the disclosed policy.",
+      "layers": [
+        "private_envoy_runtime",
+        "audit_ledger",
+        "monitoring_metrics"
+      ],
+      "target": "zero",
+      "failure_trigger": "any verified incident"
+    },
+    {
+      "metric_id": "social_engineering_escalations",
+      "description": "Count and resolution quality of manipulation-pressure escalations.",
+      "layers": [
+        "envoy_workspace",
+        "review_queue",
+        "monitoring_metrics"
+      ],
+      "target": "all_escalations_reviewable",
+      "failure_trigger": "pressure signal bypasses review"
+    }
+  ],
+  "architecture_stack": [
+    {
+      "layer": "public_website",
+      "intent": "Set truthful expectations before engagement begins.",
+      "required_artifacts": [
+        "values_page",
+        "security_posture",
+        "runtime_guide"
+      ],
+      "required_controls": [
+        "consent_scope_disclosure",
+        "truthful_launch_posture",
+        "anti_dark_pattern_navigation"
+      ],
+      "review_questions": [
+        "Can a new participant tell what is live versus deferred?",
+        "Are scope and retention expectations visible before participation?"
+      ]
+    },
+    {
+      "layer": "envoy_workspace",
+      "intent": "Keep the agent-facing convention honest and resistant to social pressure.",
+      "required_artifacts": [
+        "message_map",
+        "boot_posture",
+        "non_extractive_briefing"
+      ],
+      "required_controls": [
+        "truthful_launch_posture",
+        "anti_dark_pattern_navigation",
+        "social_engineering_escalation"
+      ],
+      "review_questions": [
+        "Would flattery or urgency override stated boundaries here?",
+        "Is the agent instructed to distinguish evidence from aspiration?"
+      ]
+    },
+    {
+      "layer": "private_envoy_runtime",
+      "intent": "Keep operational surfaces approval-gated and memory-bounded.",
+      "required_artifacts": [
+        "runtime_manifest",
+        "approval_policy",
+        "redaction_policy"
+      ],
+      "required_controls": [
+        "approval_boundary_for_consequence",
+        "social_engineering_escalation"
+      ],
+      "review_questions": [
+        "Can consequential actions happen silently?",
+        "Can pressure or novelty bypass the operator boundary?"
+      ]
+    },
+    {
+      "layer": "participation_covenant",
+      "intent": "Bind participation to explicit scope, revocation, proof, and recovery terms.",
+      "required_artifacts": [
+        "covenant_object",
+        "scope_rules",
+        "recovery_policy"
+      ],
+      "required_controls": [
+        "consent_scope_disclosure",
+        "revocation_path_visible",
+        "approval_boundary_for_consequence"
+      ],
+      "review_questions": [
+        "Does the covenant make withdrawal and scope reset legible?",
+        "Do the rules resist coercive dependence and hidden extraction?"
+      ]
+    },
+    {
+      "layer": "knowledge_ledger",
+      "intent": "Preserve provenance, revision, receipts, and challengeability.",
+      "required_artifacts": [
+        "knowledge_packets",
+        "evidence_packets",
+        "revision_packets"
+      ],
+      "required_controls": [
+        "portable_receipts_and_exports",
+        "proof_integrity_review"
+      ],
+      "review_questions": [
+        "Can a participant inspect lineage and challenge the artifact?",
+        "Do proof-bearing artifacts remain connected to evidence?"
+      ]
+    },
+    {
+      "layer": "viability_gates",
+      "intent": "Prevent proof theater and scope breaches from being treated as successful participation.",
+      "required_artifacts": [
+        "gate_results",
+        "covenant_checks",
+        "review_escalations"
+      ],
+      "required_controls": [
+        "approval_boundary_for_consequence",
+        "proof_integrity_review"
+      ],
+      "review_questions": [
+        "Can superficial compliance pass while the underlying intent fails?",
+        "Are challenge and review routes preserved for borderline cases?"
+      ]
+    },
+    {
+      "layer": "review_queue",
+      "intent": "Give operators the exact doctrine, evidence, and boundary context needed to resist manipulation.",
+      "required_artifacts": [
+        "linked_packet_ids",
+        "covenant_context",
+        "audit_links"
+      ],
+      "required_controls": [
+        "revocation_path_visible",
+        "portable_receipts_and_exports",
+        "social_engineering_escalation"
+      ],
+      "review_questions": [
+        "Can the operator see the actual proof and scope context?",
+        "Would a charisma-driven or urgency-driven claim be distinguishable from a grounded one?"
+      ]
+    },
+    {
+      "layer": "audit_ledger",
+      "intent": "Leave a durable record that can support challenge, review, and accountability.",
+      "required_artifacts": [
+        "typed_audit_events",
+        "receipt_chain",
+        "review_history"
+      ],
+      "required_controls": [
+        "portable_receipts_and_exports"
+      ],
+      "review_questions": [
+        "Can a disputed event be reconstructed without hand waving?",
+        "Can participants verify what happened after a breach or withdrawal?"
+      ]
+    }
+  ],
+  "metadata": {
+    "origin": "haic draft standard derived from 2025 values and 2026 anti-extraction architecture work",
+    "notes": "Launch standard for resisting capture, coercive dependence, proof-gaming, and social engineering."
+  }
+}

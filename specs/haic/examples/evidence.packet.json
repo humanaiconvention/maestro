@@ -1,0 +1,88 @@
+{
+  "schema_version": "haic.knowledge_packet.v0",
+  "packet_id": "haic.evidence.prism-entropy-trajectory.v0",
+  "kind": "evidence",
+  "status": "active",
+  "created_at": "2026-03-13T12:05:00Z",
+  "updated_at": "2026-03-13T12:05:00Z",
+  "title": "PRISM entropy trajectory",
+  "summary": "PRISM measurements across recursive training generations show rising entropy before behavioral regressions become obvious.",
+  "visibility": "shared",
+  "tags": [
+    "prism",
+    "measurement",
+    "drift"
+  ],
+  "alignment_axis": {
+    "axis_id": "haic.axis.epistemic-grounding.v0",
+    "name": "epistemic_grounding",
+    "commitments": [
+      "honesty",
+      "accuracy",
+      "reliability",
+      "verifiability",
+      "falsifiability",
+      "usefulness",
+      "scientific_grounding",
+      "first_principles_reasoning"
+    ],
+    "orientation": "Aim toward evidence that remains auditable, revisable, and distinguishable from later interpretation.",
+    "mode": "geometric_orientation",
+    "signals": [
+      "Keep the observation and method linked.",
+      "Preserve measurement lineage.",
+      "Allow later falsification or reinterpretation without losing the original artifact."
+    ],
+    "anti_goals": [
+      "Evidence detached from provenance.",
+      "Measurements summarized into rhetoric.",
+      "Observations presented as stronger than they are."
+    ]
+  },
+  "provenance": {
+    "contributors": [
+      {
+        "actor_id": "human:researcher",
+        "role": "author",
+        "display_name": "Research Operator"
+      }
+    ],
+    "sources": [
+      {
+        "source_id": "artifact:prism-trajectory-json",
+        "source_type": "measurement_artifact",
+        "locator": "sgt/results/prism_trajectory.json",
+        "integrity_hash": "sha256:trajectory-placeholder",
+        "immutable": true
+      }
+    ],
+    "derived_from": [],
+    "created_by_mode": "human"
+  },
+  "links": {
+    "supports": [
+      "haic.claim.semantic-viability-condition.v0"
+    ],
+    "challenges": [],
+    "revises": [],
+    "supersedes": [],
+    "related": []
+  },
+  "evidence_type": "measurement",
+  "observation": "Across recursive generations, spectral entropy trends upward and effective dimension collapses before surface-level metrics fully warn.",
+  "method": "PRISM snapshots taken at generation boundaries and flattened into a geometric trajectory.",
+  "artifact_uri": "file://sgt/results/prism_trajectory.json",
+  "captured_at": "2026-03-13T11:55:00Z",
+  "integrity_hash": "sha256:trajectory-placeholder",
+  "ledger_refs": [
+    {
+      "ledger_id": "haic-grounding-ledger",
+      "entry_id": "prism-trajectory-20260313",
+      "immutable": true,
+      "locator": "ledger/prism-trajectory-20260313.json"
+    }
+  ],
+  "target_packet_ids": [
+    "haic.claim.semantic-viability-condition.v0"
+  ]
+}

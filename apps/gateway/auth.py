@@ -1,6 +1,6 @@
 ﻿import os
 from typing import TypedDict
-from jose import jwt, JWTError
+import jwt
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -45,7 +45,7 @@ async def verify_auth(credentials: HTTPAuthorizationCredentials = Security(secur
             "tenant_id": str(tenant_id),
             "user_id": str(user_id)
         }
-    except JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=401,
             detail="Could not validate credentials (invalid JWT)"

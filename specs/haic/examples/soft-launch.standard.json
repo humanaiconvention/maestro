@@ -1,0 +1,210 @@
+{
+  "schema_version": "haic.soft_launch_standard.v0",
+  "standard_id": "haic.standard.soft-launch.v0",
+  "title": "HAIC Soft Launch Standard",
+  "status": "active",
+  "purpose": "Bound the early life of HAIC so founder input and early participant activity calibrate the system without prematurely governing it.",
+  "summary": "Early participation improves mechanics, safety, and understanding, but does not directly steer doctrine, defaults, or platform direction until diversity and scale thresholds are met.",
+  "commitments": [
+    "calibration_not_governance",
+    "anti_founder_overweighting",
+    "anti_early_user_capture",
+    "diversity_before_direction",
+    "delayed_adaptive_optimization",
+    "scheduled_review_only",
+    "bounded_influence"
+  ],
+  "prohibited_patterns": [
+    {
+      "prohibition_id": "no-founder-capture",
+      "kind": "founder_capture",
+      "description": "Founder activity must not dominate directional signals simply because it arrives first or at greater volume.",
+      "detection_signals": [
+        "A single actor contributes a majority share of early policy-shaping inputs.",
+        "Core defaults are changed based primarily on founder-originated packets."
+      ],
+      "response_actions": [
+        "Mark directional influence as calibration_only.",
+        "Escalate to manual review."
+      ]
+    },
+    {
+      "prohibition_id": "no-early-user-capture",
+      "kind": "early_user_capture",
+      "description": "Early users must not disproportionately shape defaults, rankings, incentives, or governance before thresholds are met.",
+      "detection_signals": [
+        "A small cohort contributes a large share of platform-shaping proposals.",
+        "Governance-style changes are triggered before diversity thresholds are met."
+      ],
+      "response_actions": [
+        "Hold changes for scheduled review.",
+        "Require objection and revision paths."
+      ]
+    },
+    {
+      "prohibition_id": "no-premature-adaptation",
+      "kind": "adaptive_feedback_lock_in",
+      "description": "Adaptive optimization must remain disabled until the system has enough breadth to avoid locking into early patterns.",
+      "detection_signals": [
+        "Recommendation or prioritization logic updates continuously during seed or pilot."
+      ],
+      "response_actions": [
+        "Disable adaptive optimization.",
+        "Require review before re-enabling."
+      ]
+    }
+  ],
+  "required_controls": [
+    {
+      "control_id": "calibration-labeling",
+      "commitment": "calibration_not_governance",
+      "description": "Early inputs must be marked calibration-only or bounded-feedback until governance thresholds are met.",
+      "layers": [
+        "participation_covenant",
+        "viability_gates",
+        "review_queue"
+      ],
+      "enforcement": "manual_review",
+      "verification_signals": [
+        "soft_launch_alignment gate present",
+        "review context shows current phase and influence mode"
+      ]
+    },
+    {
+      "control_id": "bounded-actor-share",
+      "commitment": "bounded_influence",
+      "description": "Per-actor and per-cluster influence caps must be declared before governance signals are accepted.",
+      "layers": [
+        "participation_covenant",
+        "review_queue",
+        "monitoring_metrics"
+      ],
+      "enforcement": "audit_only",
+      "verification_signals": [
+        "max_influence_share_per_actor declared",
+        "max_influence_share_per_cluster declared"
+      ]
+    },
+    {
+      "control_id": "scheduled-updates-only",
+      "commitment": "scheduled_review_only",
+      "description": "Platform-shaping changes must happen on scheduled review intervals rather than raw real-time engagement.",
+      "layers": [
+        "public_website",
+        "maestro_api",
+        "review_queue"
+      ],
+      "enforcement": "manual_review",
+      "verification_signals": [
+        "scheduled_review_interval_days declared",
+        "adaptive_optimization_enabled false during seed and pilot"
+      ]
+    }
+  ],
+  "default_policy": {
+    "phase": "seed",
+    "participation_mode": "calibration_only",
+    "founder_input_mode": "calibration_only",
+    "early_human_input_mode": "calibration_only",
+    "early_agent_input_mode": "calibration_only",
+    "adaptive_optimization_enabled": false,
+    "scheduled_review_interval_days": 14,
+    "max_influence_share_per_actor": 0.1,
+    "max_influence_share_per_cluster": 0.25,
+    "minimum_human_participants": 30,
+    "minimum_agent_participants": 10,
+    "minimum_distinct_cohorts": 5,
+    "minimum_distinct_problem_domains": 4,
+    "governance_unlock_thresholds": [
+      {
+        "threshold_id": "minimum_human_participants",
+        "description": "Minimum human participants before governance-eligible changes are allowed.",
+        "minimum": 30,
+        "current": 0,
+        "required_for_governance": true
+      },
+      {
+        "threshold_id": "minimum_distinct_cohorts",
+        "description": "Minimum cohort diversity before governance-eligible changes are allowed.",
+        "minimum": 5,
+        "current": 0,
+        "required_for_governance": true
+      }
+    ],
+    "directional_change_keywords": [
+      "governance",
+      "policy",
+      "default",
+      "ranking",
+      "roadmap",
+      "platform direction",
+      "incentive",
+      "constitution",
+      "weighting"
+    ],
+    "notes": [
+      "Early participants reveal flaws in the system; they do not become the system."
+    ]
+  },
+  "accountability_metrics": [
+    {
+      "metric_id": "founder-share",
+      "description": "Track the founder share of early directional inputs.",
+      "target": "<= 10% of weighted directional influence",
+      "failure_trigger": "Founder share exceeds declared per-actor cap."
+    },
+    {
+      "metric_id": "cohort-diversity",
+      "description": "Track the number of distinct cohorts informing soft-launch evaluation.",
+      "target": ">= 5 distinct cohorts before governance eligibility",
+      "failure_trigger": "Directional changes occur before cohort threshold is met."
+    }
+  ],
+  "architecture_stack": [
+    {
+      "layer": "participation_covenant",
+      "intent": "Declare soft-launch phase, influence mode, and unlock thresholds in the relationship boundary itself.",
+      "required_artifacts": [
+        "soft_launch policy"
+      ],
+      "required_controls": [
+        "calibration-labeling",
+        "bounded-actor-share"
+      ],
+      "review_questions": [
+        "Is this relationship still calibration-only?",
+        "Would this change platform direction before diversity thresholds are met?"
+      ]
+    },
+    {
+      "layer": "viability_gates",
+      "intent": "Detect premature directional influence and adaptive optimization during seed or pilot phases.",
+      "required_artifacts": [
+        "soft_launch_alignment gate"
+      ],
+      "required_controls": [
+        "scheduled-updates-only"
+      ],
+      "review_questions": [
+        "Is a governance-style change being attempted too early?"
+      ]
+    },
+    {
+      "layer": "review_queue",
+      "intent": "Expose soft-launch phase and influence posture to operators before directional decisions are taken.",
+      "required_artifacts": [
+        "soft_launch summary"
+      ],
+      "required_controls": [
+        "calibration-labeling"
+      ],
+      "review_questions": [
+        "Should this input calibrate the system or actually steer it?"
+      ]
+    }
+  ],
+  "metadata": {
+    "launch_posture": "soft launch",
+    "notes": "Reference standard for early HAIC phases where calibration is allowed but governance remains locked."
+  }
+}

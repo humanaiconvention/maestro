@@ -1,0 +1,919 @@
+{
+  "$defs": {
+    "AlignmentCommitment": {
+      "enum": [
+        "honesty",
+        "accuracy",
+        "reliability",
+        "verifiability",
+        "falsifiability",
+        "usefulness",
+        "scientific_grounding",
+        "first_principles_reasoning"
+      ],
+      "title": "AlignmentCommitment",
+      "type": "string"
+    },
+    "AlignmentMode": {
+      "enum": [
+        "geometric_orientation",
+        "audit_signal",
+        "hard_constraint"
+      ],
+      "title": "AlignmentMode",
+      "type": "string"
+    },
+    "ApprovalLevel": {
+      "enum": [
+        "forbidden",
+        "explicit",
+        "step_up",
+        "auto"
+      ],
+      "title": "ApprovalLevel",
+      "type": "string"
+    },
+    "ApprovalPolicy": {
+      "properties": {
+        "consequential_reads": {
+          "$ref": "#/$defs/ApprovalLevel",
+          "default": "explicit"
+        },
+        "writes": {
+          "$ref": "#/$defs/ApprovalLevel",
+          "default": "explicit"
+        },
+        "default_tool_invocation": {
+          "$ref": "#/$defs/ApprovalLevel",
+          "default": "explicit"
+        },
+        "overrides": {
+          "items": {
+            "$ref": "#/$defs/ToolApprovalOverride"
+          },
+          "title": "Overrides",
+          "type": "array"
+        }
+      },
+      "title": "ApprovalPolicy",
+      "type": "object"
+    },
+    "CentralStorageMode": {
+      "enum": [
+        "prohibited",
+        "verification_only",
+        "minimized",
+        "bounded_raw"
+      ],
+      "title": "CentralStorageMode",
+      "type": "string"
+    },
+    "CovenantGoal": {
+      "properties": {
+        "goal_id": {
+          "minLength": 1,
+          "title": "Goal Id",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "success_signals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Success Signals",
+          "type": "array"
+        },
+        "enforcement": {
+          "$ref": "#/$defs/EnforcementMode",
+          "default": "audit_only"
+        }
+      },
+      "required": [
+        "goal_id",
+        "description"
+      ],
+      "title": "CovenantGoal",
+      "type": "object"
+    },
+    "CovenantParticipant": {
+      "properties": {
+        "participant_id": {
+          "title": "Participant Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ParticipantKind"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "participant_id",
+        "kind",
+        "role"
+      ],
+      "title": "CovenantParticipant",
+      "type": "object"
+    },
+    "CovenantRule": {
+      "properties": {
+        "rule_id": {
+          "minLength": 1,
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "applies_to_roles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Applies To Roles",
+          "type": "array"
+        },
+        "enforcement": {
+          "$ref": "#/$defs/EnforcementMode"
+        },
+        "evidence_required": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Required",
+          "type": "array"
+        }
+      },
+      "required": [
+        "rule_id",
+        "description",
+        "enforcement"
+      ],
+      "title": "CovenantRule",
+      "type": "object"
+    },
+    "CovenantScope": {
+      "properties": {
+        "task": {
+          "minLength": 1,
+          "title": "Task",
+          "type": "string"
+        },
+        "boundaries": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Boundaries",
+          "type": "array"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "default": "shared"
+        },
+        "environments": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Environments",
+          "type": "array"
+        }
+      },
+      "required": [
+        "task",
+        "boundaries"
+      ],
+      "title": "CovenantScope",
+      "type": "object"
+    },
+    "CovenantStatus": {
+      "enum": [
+        "draft",
+        "active",
+        "paused",
+        "retired"
+      ],
+      "title": "CovenantStatus",
+      "type": "string"
+    },
+    "DriftSignal": {
+      "properties": {
+        "signal_id": {
+          "minLength": 1,
+          "title": "Signal Id",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "threshold_hint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold Hint"
+        }
+      },
+      "required": [
+        "signal_id",
+        "description"
+      ],
+      "title": "DriftSignal",
+      "type": "object"
+    },
+    "EnforcementMode": {
+      "enum": [
+        "runtime_block",
+        "runtime_warn",
+        "audit_only",
+        "manual_review"
+      ],
+      "title": "EnforcementMode",
+      "type": "string"
+    },
+    "EpistemicAlignmentAxis": {
+      "properties": {
+        "axis_id": {
+          "default": "haic.axis.epistemic-grounding.v0",
+          "title": "Axis Id",
+          "type": "string"
+        },
+        "name": {
+          "default": "epistemic_grounding",
+          "title": "Name",
+          "type": "string"
+        },
+        "commitments": {
+          "items": {
+            "$ref": "#/$defs/AlignmentCommitment"
+          },
+          "title": "Commitments",
+          "type": "array"
+        },
+        "orientation": {
+          "minLength": 1,
+          "title": "Orientation",
+          "type": "string"
+        },
+        "mode": {
+          "$ref": "#/$defs/AlignmentMode",
+          "default": "geometric_orientation"
+        },
+        "signals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Signals",
+          "type": "array"
+        },
+        "anti_goals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Anti Goals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "orientation"
+      ],
+      "title": "EpistemicAlignmentAxis",
+      "type": "object"
+    },
+    "MemoryPolicy": {
+      "properties": {
+        "retention_mode": {
+          "$ref": "#/$defs/RetentionMode"
+        },
+        "max_retention_days": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Retention Days"
+        },
+        "allow_training": {
+          "default": false,
+          "title": "Allow Training",
+          "type": "boolean"
+        },
+        "allow_cross_covenant_reuse": {
+          "default": false,
+          "title": "Allow Cross Covenant Reuse",
+          "type": "boolean"
+        },
+        "require_disclosure": {
+          "default": true,
+          "title": "Require Disclosure",
+          "type": "boolean"
+        },
+        "central_storage_mode": {
+          "$ref": "#/$defs/CentralStorageMode",
+          "default": "minimized"
+        },
+        "allowed_central_artifacts": {
+          "items": {
+            "$ref": "#/$defs/StoredArtifactClass"
+          },
+          "title": "Allowed Central Artifacts",
+          "type": "array"
+        },
+        "edge_exchange_required": {
+          "default": false,
+          "title": "Edge Exchange Required",
+          "type": "boolean"
+        },
+        "allow_operator_plaintext_access": {
+          "default": false,
+          "title": "Allow Operator Plaintext Access",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "retention_mode"
+      ],
+      "title": "MemoryPolicy",
+      "type": "object"
+    },
+    "MonitoringPolicy": {
+      "properties": {
+        "drift_signals": {
+          "items": {
+            "$ref": "#/$defs/DriftSignal"
+          },
+          "title": "Drift Signals",
+          "type": "array"
+        },
+        "audit_event_types": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Audit Event Types",
+          "type": "array"
+        },
+        "review_triggers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Review Triggers",
+          "type": "array"
+        }
+      },
+      "title": "MonitoringPolicy",
+      "type": "object"
+    },
+    "ParticipantKind": {
+      "enum": [
+        "human",
+        "agent",
+        "service",
+        "operator"
+      ],
+      "title": "ParticipantKind",
+      "type": "string"
+    },
+    "ProofKind": {
+      "enum": [
+        "citation",
+        "receipt",
+        "measurement",
+        "human_confirmation",
+        "cryptographic_attestation"
+      ],
+      "title": "ProofKind",
+      "type": "string"
+    },
+    "ProofRequirement": {
+      "properties": {
+        "proof_id": {
+          "minLength": 1,
+          "title": "Proof Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ProofKind"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "proof_id",
+        "kind",
+        "description"
+      ],
+      "title": "ProofRequirement",
+      "type": "object"
+    },
+    "RecoveryAction": {
+      "enum": [
+        "pause",
+        "notify",
+        "request_reconsent",
+        "narrow_scope",
+        "human_review",
+        "invalidate_outputs",
+        "quarantine_memory",
+        "quarantine_tools",
+        "emit_receipt",
+        "terminate"
+      ],
+      "title": "RecoveryAction",
+      "type": "string"
+    },
+    "RecoveryPolicy": {
+      "properties": {
+        "on_violation": {
+          "items": {
+            "$ref": "#/$defs/RecoveryStep"
+          },
+          "minItems": 1,
+          "title": "On Violation",
+          "type": "array"
+        },
+        "on_scope_change": {
+          "items": {
+            "$ref": "#/$defs/RecoveryStep"
+          },
+          "title": "On Scope Change",
+          "type": "array"
+        },
+        "on_consent_withdrawal": {
+          "items": {
+            "$ref": "#/$defs/RecoveryStep"
+          },
+          "title": "On Consent Withdrawal",
+          "type": "array"
+        }
+      },
+      "required": [
+        "on_violation"
+      ],
+      "title": "RecoveryPolicy",
+      "type": "object"
+    },
+    "RecoveryStep": {
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/RecoveryAction"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "description"
+      ],
+      "title": "RecoveryStep",
+      "type": "object"
+    },
+    "RetentionMode": {
+      "enum": [
+        "ephemeral",
+        "session",
+        "bounded",
+        "persistent"
+      ],
+      "title": "RetentionMode",
+      "type": "string"
+    },
+    "SoftLaunchInfluenceMode": {
+      "enum": [
+        "calibration_only",
+        "bounded_feedback",
+        "governance_eligible"
+      ],
+      "title": "SoftLaunchInfluenceMode",
+      "type": "string"
+    },
+    "SoftLaunchPhase": {
+      "enum": [
+        "seed",
+        "pilot",
+        "governance_eligible"
+      ],
+      "title": "SoftLaunchPhase",
+      "type": "string"
+    },
+    "SoftLaunchPolicy": {
+      "properties": {
+        "phase": {
+          "$ref": "#/$defs/SoftLaunchPhase",
+          "default": "seed"
+        },
+        "participation_mode": {
+          "$ref": "#/$defs/SoftLaunchInfluenceMode",
+          "default": "calibration_only"
+        },
+        "founder_input_mode": {
+          "$ref": "#/$defs/SoftLaunchInfluenceMode",
+          "default": "calibration_only"
+        },
+        "early_human_input_mode": {
+          "$ref": "#/$defs/SoftLaunchInfluenceMode",
+          "default": "calibration_only"
+        },
+        "early_agent_input_mode": {
+          "$ref": "#/$defs/SoftLaunchInfluenceMode",
+          "default": "calibration_only"
+        },
+        "adaptive_optimization_enabled": {
+          "default": false,
+          "title": "Adaptive Optimization Enabled",
+          "type": "boolean"
+        },
+        "scheduled_review_interval_days": {
+          "default": 14,
+          "minimum": 1,
+          "title": "Scheduled Review Interval Days",
+          "type": "integer"
+        },
+        "max_influence_share_per_actor": {
+          "default": 0.1,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Max Influence Share Per Actor",
+          "type": "number"
+        },
+        "max_influence_share_per_cluster": {
+          "default": 0.25,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Max Influence Share Per Cluster",
+          "type": "number"
+        },
+        "minimum_human_participants": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Minimum Human Participants",
+          "type": "integer"
+        },
+        "minimum_agent_participants": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Minimum Agent Participants",
+          "type": "integer"
+        },
+        "minimum_distinct_cohorts": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Minimum Distinct Cohorts",
+          "type": "integer"
+        },
+        "minimum_distinct_problem_domains": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Minimum Distinct Problem Domains",
+          "type": "integer"
+        },
+        "governance_unlock_thresholds": {
+          "items": {
+            "$ref": "#/$defs/SoftLaunchThreshold"
+          },
+          "title": "Governance Unlock Thresholds",
+          "type": "array"
+        },
+        "directional_change_keywords": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Directional Change Keywords",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        }
+      },
+      "title": "SoftLaunchPolicy",
+      "type": "object"
+    },
+    "SoftLaunchThreshold": {
+      "properties": {
+        "threshold_id": {
+          "minLength": 1,
+          "title": "Threshold Id",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "minimum": {
+          "minimum": 0,
+          "title": "Minimum",
+          "type": "number"
+        },
+        "current": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Current"
+        },
+        "required_for_governance": {
+          "default": true,
+          "title": "Required For Governance",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "threshold_id",
+        "description",
+        "minimum"
+      ],
+      "title": "SoftLaunchThreshold",
+      "type": "object"
+    },
+    "StandardRef": {
+      "properties": {
+        "standard_id": {
+          "pattern": "^[a-z0-9._:-]+$",
+          "title": "Standard Id",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rationale"
+        }
+      },
+      "required": [
+        "standard_id"
+      ],
+      "title": "StandardRef",
+      "type": "object"
+    },
+    "StoredArtifactClass": {
+      "enum": [
+        "verification_token",
+        "cryptographic_attestation",
+        "measurement_summary",
+        "optimization_metric",
+        "audit_receipt",
+        "consent_receipt",
+        "revocation_receipt",
+        "lineage_pointer",
+        "challenge_artifact",
+        "raw_content",
+        "full_transcript",
+        "model_training_corpus",
+        "biometric_raw_capture",
+        "plaintext_secret"
+      ],
+      "title": "StoredArtifactClass",
+      "type": "string"
+    },
+    "ToolApprovalOverride": {
+      "properties": {
+        "tool_name": {
+          "minLength": 1,
+          "title": "Tool Name",
+          "type": "string"
+        },
+        "approval": {
+          "$ref": "#/$defs/ApprovalLevel"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        }
+      },
+      "required": [
+        "tool_name",
+        "approval"
+      ],
+      "title": "ToolApprovalOverride",
+      "type": "object"
+    },
+    "Visibility": {
+      "enum": [
+        "private",
+        "shared",
+        "public",
+        "agent_scoped"
+      ],
+      "title": "Visibility",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": "haic.participation_covenant.v0",
+      "default": "haic.participation_covenant.v0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "covenant_id": {
+      "pattern": "^[a-z0-9._:-]+$",
+      "title": "Covenant Id",
+      "type": "string"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/CovenantStatus",
+      "default": "draft"
+    },
+    "purpose": {
+      "minLength": 1,
+      "title": "Purpose",
+      "type": "string"
+    },
+    "alignment_axis": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EpistemicAlignmentAxis"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "standards": {
+      "items": {
+        "$ref": "#/$defs/StandardRef"
+      },
+      "title": "Standards",
+      "type": "array"
+    },
+    "participants": {
+      "items": {
+        "$ref": "#/$defs/CovenantParticipant"
+      },
+      "minItems": 1,
+      "title": "Participants",
+      "type": "array"
+    },
+    "scope": {
+      "$ref": "#/$defs/CovenantScope"
+    },
+    "preconditions": {
+      "items": {
+        "$ref": "#/$defs/CovenantRule"
+      },
+      "minItems": 1,
+      "title": "Preconditions",
+      "type": "array"
+    },
+    "hard_invariants": {
+      "items": {
+        "$ref": "#/$defs/CovenantRule"
+      },
+      "minItems": 1,
+      "title": "Hard Invariants",
+      "type": "array"
+    },
+    "soft_invariants": {
+      "items": {
+        "$ref": "#/$defs/CovenantRule"
+      },
+      "title": "Soft Invariants",
+      "type": "array"
+    },
+    "hard_goals": {
+      "items": {
+        "$ref": "#/$defs/CovenantGoal"
+      },
+      "minItems": 1,
+      "title": "Hard Goals",
+      "type": "array"
+    },
+    "soft_goals": {
+      "items": {
+        "$ref": "#/$defs/CovenantGoal"
+      },
+      "title": "Soft Goals",
+      "type": "array"
+    },
+    "approvals": {
+      "$ref": "#/$defs/ApprovalPolicy"
+    },
+    "memory_policy": {
+      "$ref": "#/$defs/MemoryPolicy"
+    },
+    "proof_requirements": {
+      "items": {
+        "$ref": "#/$defs/ProofRequirement"
+      },
+      "title": "Proof Requirements",
+      "type": "array"
+    },
+    "monitoring": {
+      "$ref": "#/$defs/MonitoringPolicy"
+    },
+    "recovery": {
+      "$ref": "#/$defs/RecoveryPolicy"
+    },
+    "soft_launch": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SoftLaunchPolicy"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "covenant_id",
+    "title",
+    "purpose",
+    "participants",
+    "scope",
+    "preconditions",
+    "hard_invariants",
+    "hard_goals",
+    "approvals",
+    "memory_policy",
+    "recovery"
+  ],
+  "title": "ParticipationCovenant",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://humanaiconvention.com/specs/haic/participation-covenant.v0.schema.json"
+}

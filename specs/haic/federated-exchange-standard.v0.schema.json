@@ -1,0 +1,415 @@
+{
+  "$defs": {
+    "ArchitectureLayer": {
+      "enum": [
+        "public_website",
+        "public_docs",
+        "envoy_workspace",
+        "private_envoy_runtime",
+        "participation_covenant",
+        "knowledge_ledger",
+        "maestro_api",
+        "viability_gates",
+        "review_queue",
+        "audit_ledger",
+        "monitoring_metrics"
+      ],
+      "title": "ArchitectureLayer",
+      "type": "string"
+    },
+    "ArchitectureStackEntry": {
+      "properties": {
+        "layer": {
+          "$ref": "#/$defs/ArchitectureLayer"
+        },
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "required_artifacts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Artifacts",
+          "type": "array"
+        },
+        "required_controls": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Controls",
+          "type": "array"
+        },
+        "review_questions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Review Questions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "layer",
+        "intent"
+      ],
+      "title": "ArchitectureStackEntry",
+      "type": "object"
+    },
+    "CentralStorageMode": {
+      "enum": [
+        "prohibited",
+        "verification_only",
+        "minimized",
+        "bounded_raw"
+      ],
+      "title": "CentralStorageMode",
+      "type": "string"
+    },
+    "EnforcementMode": {
+      "enum": [
+        "runtime_block",
+        "runtime_warn",
+        "audit_only",
+        "manual_review"
+      ],
+      "title": "EnforcementMode",
+      "type": "string"
+    },
+    "FederatedCommitment": {
+      "enum": [
+        "federated_exchange",
+        "distributed_control",
+        "open_protocols",
+        "transparent_verification",
+        "participant_data_sovereignty",
+        "verification_minimization",
+        "portable_receipts",
+        "continuous_revision"
+      ],
+      "title": "FederatedCommitment",
+      "type": "string"
+    },
+    "FederatedControl": {
+      "properties": {
+        "control_id": {
+          "minLength": 1,
+          "title": "Control Id",
+          "type": "string"
+        },
+        "commitment": {
+          "$ref": "#/$defs/FederatedCommitment"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "layers": {
+          "items": {
+            "$ref": "#/$defs/ArchitectureLayer"
+          },
+          "minItems": 1,
+          "title": "Layers",
+          "type": "array"
+        },
+        "enforcement": {
+          "$ref": "#/$defs/EnforcementMode",
+          "default": "audit_only"
+        },
+        "verification_signals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Verification Signals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "control_id",
+        "commitment",
+        "description",
+        "layers"
+      ],
+      "title": "FederatedControl",
+      "type": "object"
+    },
+    "FederatedProhibition": {
+      "properties": {
+        "prohibition_id": {
+          "minLength": 1,
+          "title": "Prohibition Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/FederatedRiskPatternKind"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "detection_signals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Detection Signals",
+          "type": "array"
+        },
+        "response_actions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Response Actions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "prohibition_id",
+        "kind",
+        "description"
+      ],
+      "title": "FederatedProhibition",
+      "type": "object"
+    },
+    "FederatedRiskPatternKind": {
+      "enum": [
+        "central_payload_hoarding",
+        "silent_payload_retention",
+        "operator_plaintext_capture",
+        "hidden_training_reuse",
+        "opaque_verification",
+        "closed_protocol_dependency",
+        "unverifiable_optimization",
+        "federation_in_name_only"
+      ],
+      "title": "FederatedRiskPatternKind",
+      "type": "string"
+    },
+    "MemoryPolicy": {
+      "properties": {
+        "retention_mode": {
+          "$ref": "#/$defs/RetentionMode"
+        },
+        "max_retention_days": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Retention Days"
+        },
+        "allow_training": {
+          "default": false,
+          "title": "Allow Training",
+          "type": "boolean"
+        },
+        "allow_cross_covenant_reuse": {
+          "default": false,
+          "title": "Allow Cross Covenant Reuse",
+          "type": "boolean"
+        },
+        "require_disclosure": {
+          "default": true,
+          "title": "Require Disclosure",
+          "type": "boolean"
+        },
+        "central_storage_mode": {
+          "$ref": "#/$defs/CentralStorageMode",
+          "default": "minimized"
+        },
+        "allowed_central_artifacts": {
+          "items": {
+            "$ref": "#/$defs/StoredArtifactClass"
+          },
+          "title": "Allowed Central Artifacts",
+          "type": "array"
+        },
+        "edge_exchange_required": {
+          "default": false,
+          "title": "Edge Exchange Required",
+          "type": "boolean"
+        },
+        "allow_operator_plaintext_access": {
+          "default": false,
+          "title": "Allow Operator Plaintext Access",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "retention_mode"
+      ],
+      "title": "MemoryPolicy",
+      "type": "object"
+    },
+    "RetentionMode": {
+      "enum": [
+        "ephemeral",
+        "session",
+        "bounded",
+        "persistent"
+      ],
+      "title": "RetentionMode",
+      "type": "string"
+    },
+    "StandardStatus": {
+      "enum": [
+        "draft",
+        "active",
+        "retired"
+      ],
+      "title": "StandardStatus",
+      "type": "string"
+    },
+    "StoredArtifactClass": {
+      "enum": [
+        "verification_token",
+        "cryptographic_attestation",
+        "measurement_summary",
+        "optimization_metric",
+        "audit_receipt",
+        "consent_receipt",
+        "revocation_receipt",
+        "lineage_pointer",
+        "challenge_artifact",
+        "raw_content",
+        "full_transcript",
+        "model_training_corpus",
+        "biometric_raw_capture",
+        "plaintext_secret"
+      ],
+      "title": "StoredArtifactClass",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": "haic.federated_exchange_standard.v0",
+      "default": "haic.federated_exchange_standard.v0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "standard_id": {
+      "pattern": "^[a-z0-9._:-]+$",
+      "title": "Standard Id",
+      "type": "string"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/StandardStatus",
+      "default": "draft"
+    },
+    "purpose": {
+      "minLength": 1,
+      "title": "Purpose",
+      "type": "string"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Summary"
+    },
+    "commitments": {
+      "items": {
+        "$ref": "#/$defs/FederatedCommitment"
+      },
+      "minItems": 1,
+      "title": "Commitments",
+      "type": "array"
+    },
+    "prohibited_patterns": {
+      "items": {
+        "$ref": "#/$defs/FederatedProhibition"
+      },
+      "minItems": 1,
+      "title": "Prohibited Patterns",
+      "type": "array"
+    },
+    "required_controls": {
+      "items": {
+        "$ref": "#/$defs/FederatedControl"
+      },
+      "minItems": 1,
+      "title": "Required Controls",
+      "type": "array"
+    },
+    "allowed_system_artifacts": {
+      "items": {
+        "$ref": "#/$defs/StoredArtifactClass"
+      },
+      "minItems": 1,
+      "title": "Allowed System Artifacts",
+      "type": "array"
+    },
+    "disallowed_system_artifacts": {
+      "items": {
+        "$ref": "#/$defs/StoredArtifactClass"
+      },
+      "minItems": 1,
+      "title": "Disallowed System Artifacts",
+      "type": "array"
+    },
+    "default_memory_policy": {
+      "$ref": "#/$defs/MemoryPolicy"
+    },
+    "transparency_requirements": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Transparency Requirements",
+      "type": "array"
+    },
+    "evolution_requirements": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evolution Requirements",
+      "type": "array"
+    },
+    "architecture_stack": {
+      "items": {
+        "$ref": "#/$defs/ArchitectureStackEntry"
+      },
+      "minItems": 1,
+      "title": "Architecture Stack",
+      "type": "array"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "standard_id",
+    "title",
+    "purpose",
+    "commitments",
+    "prohibited_patterns",
+    "required_controls",
+    "allowed_system_artifacts",
+    "disallowed_system_artifacts",
+    "default_memory_policy",
+    "architecture_stack"
+  ],
+  "title": "FederatedExchangeStandard",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://humanaiconvention.com/specs/haic/federated-exchange-standard.v0.schema.json"
+}

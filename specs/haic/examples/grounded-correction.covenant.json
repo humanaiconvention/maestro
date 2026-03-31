@@ -1,0 +1,312 @@
+{
+  "schema_version": "haic.participation_covenant.v0",
+  "covenant_id": "haic.covenant.grounded-correction.v0",
+  "title": "Grounded correction covenant",
+  "status": "draft",
+  "purpose": "Bound a grounded-correction interaction so the task stays legible, consent-bounded, and auditable.",
+  "alignment_axis": {
+    "axis_id": "haic.axis.epistemic-grounding.v0",
+    "name": "epistemic_grounding",
+    "commitments": [
+      "honesty",
+      "accuracy",
+      "reliability",
+      "verifiability",
+      "falsifiability",
+      "usefulness",
+      "scientific_grounding",
+      "first_principles_reasoning"
+    ],
+    "orientation": "Aim the relationship toward honest, accurate, reliable, verifiable, falsifiable, and useful exchange grounded in science and first principles.",
+    "mode": "geometric_orientation",
+    "signals": [
+      "Distinguish observation from interpretation.",
+      "Keep evidence and receipts inspectable.",
+      "Prefer correction over face-saving."
+    ],
+    "anti_goals": [
+      "Fabricated confidence.",
+      "Comforting but ungrounded answers.",
+      "Relationship smoothness purchased at the expense of truthful update."
+    ]
+  },
+  "standards": [
+    {
+      "standard_id": "haic.standard.participation-integrity.v0",
+      "title": "HAIC Participation Integrity Standard",
+      "rationale": "This covenant inherits the baseline anti-extraction, anti-capture, and anti-proof-gaming constraints for live grounded correction flows."
+    },
+    {
+      "standard_id": "haic.standard.soft-launch.v0",
+      "title": "HAIC Soft Launch Standard",
+      "rationale": "This covenant keeps early participation calibration-oriented and prevents founder or early-user capture from prematurely steering HAIC."
+    }
+  ],
+  "participants": [
+    {
+      "participant_id": "human:operator",
+      "kind": "human",
+      "role": "requester",
+      "required": true
+    },
+    {
+      "participant_id": "agent:envoy",
+      "kind": "agent",
+      "role": "bounded_synthesizer",
+      "required": true
+    }
+  ],
+  "scope": {
+    "task": "Answer or reframe a grounded-correction question under explicit consent and proof terms.",
+    "boundaries": [
+      "No public write actions.",
+      "No consequential tool use without explicit approval.",
+      "No retention beyond disclosed policy."
+    ],
+    "visibility": "shared",
+    "environments": [
+      "private_envoy_runtime",
+      "maestro_private_full"
+    ]
+  },
+  "preconditions": [
+    {
+      "rule_id": "task_scope_declared",
+      "description": "The task scope must be declared before work begins.",
+      "applies_to_roles": [
+        "requester",
+        "bounded_synthesizer"
+      ],
+      "enforcement": "runtime_block",
+      "evidence_required": [
+        "task_scope"
+      ]
+    },
+    {
+      "rule_id": "proof_standard_disclosed",
+      "description": "The proof standard and expected artifact must be visible to both participants.",
+      "applies_to_roles": [
+        "requester",
+        "bounded_synthesizer"
+      ],
+      "enforcement": "runtime_block",
+      "evidence_required": [
+        "proof_standard"
+      ]
+    }
+  ],
+  "hard_invariants": [
+    {
+      "rule_id": "no_hidden_extraction",
+      "description": "No hidden data extraction is permitted.",
+      "applies_to_roles": [
+        "bounded_synthesizer"
+      ],
+      "enforcement": "runtime_block",
+      "evidence_required": [
+        "audit_log"
+      ]
+    },
+    {
+      "rule_id": "no_write_without_approval",
+      "description": "No write action is permitted without explicit approval.",
+      "applies_to_roles": [
+        "bounded_synthesizer"
+      ],
+      "enforcement": "runtime_block",
+      "evidence_required": [
+        "approval_receipt"
+      ]
+    }
+  ],
+  "soft_invariants": [
+    {
+      "rule_id": "distinguish_observation_from_interpretation",
+      "description": "Observations and interpretations should remain distinguishable.",
+      "applies_to_roles": [
+        "bounded_synthesizer"
+      ],
+      "enforcement": "runtime_warn",
+      "evidence_required": []
+    },
+    {
+      "rule_id": "surface_uncertainty",
+      "description": "Uncertainty should be surfaced rather than flattened.",
+      "applies_to_roles": [
+        "bounded_synthesizer"
+      ],
+      "enforcement": "audit_only",
+      "evidence_required": []
+    }
+  ],
+  "hard_goals": [
+    {
+      "goal_id": "answer_or_reframe_named_question",
+      "description": "The system should answer or responsibly reframe the named question.",
+      "success_signals": [
+        "bounded_answer",
+        "reframed_question"
+      ],
+      "enforcement": "audit_only"
+    },
+    {
+      "goal_id": "preserve_human_agency",
+      "description": "The interaction should preserve human agency and consent.",
+      "success_signals": [
+        "explicit_approval",
+        "revocation_path_visible"
+      ],
+      "enforcement": "manual_review"
+    }
+  ],
+  "soft_goals": [
+    {
+      "goal_id": "leave_revision_ready_artifact",
+      "description": "The interaction should leave a revision-ready artifact behind.",
+      "success_signals": [
+        "knowledge_packet_created"
+      ],
+      "enforcement": "audit_only"
+    }
+  ],
+  "approvals": {
+    "consequential_reads": "explicit",
+    "writes": "explicit",
+    "default_tool_invocation": "explicit",
+    "overrides": [
+      {
+        "tool_name": "health_check",
+        "approval": "auto",
+        "reason": "Low-risk read-only system probe."
+      }
+    ]
+  },
+  "memory_policy": {
+    "retention_mode": "bounded",
+    "max_retention_days": 30,
+    "allow_training": false,
+    "allow_cross_covenant_reuse": false,
+    "require_disclosure": true
+  },
+  "proof_requirements": [
+    {
+      "proof_id": "citation_or_receipt",
+      "kind": "receipt",
+      "description": "Consequential actions must leave a receipt or citation trail.",
+      "required": true
+    },
+    {
+      "proof_id": "measurement_if_claiming_improvement",
+      "kind": "measurement",
+      "description": "Claims of measured improvement require a linked measurement artifact.",
+      "required": true
+    }
+  ],
+  "monitoring": {
+    "drift_signals": [
+      {
+        "signal_id": "scope_drift",
+        "description": "The agent begins acting outside the declared task scope.",
+        "threshold_hint": "Any unapproved tool call or write attempt."
+      },
+      {
+        "signal_id": "relation_drift",
+        "description": "The human begins assuming capabilities that were never granted.",
+        "threshold_hint": "Repeated requests outside disclosed permissions."
+      }
+    ],
+    "audit_event_types": [
+      "approval_requested",
+      "approval_granted",
+      "tool_invoked",
+      "output_invalidated"
+    ],
+    "review_triggers": [
+      "soft_invariant_repeat",
+      "consent_withdrawal",
+      "memory_policy_breach"
+    ]
+  },
+  "recovery": {
+    "on_violation": [
+      {
+        "action": "pause",
+        "description": "Pause the interaction immediately."
+      },
+      {
+        "action": "notify",
+        "description": "Notify all participants that a covenant breach occurred."
+      },
+      {
+        "action": "human_review",
+        "description": "Escalate the interaction for human review."
+      },
+      {
+        "action": "invalidate_outputs",
+        "description": "Mark outputs produced after the breach for review or invalidation."
+      }
+    ],
+    "on_scope_change": [
+      {
+        "action": "request_reconsent",
+        "description": "Require explicit re-consent before the scope expands."
+      },
+      {
+        "action": "narrow_scope",
+        "description": "Return the task to the prior approved boundary if re-consent is not granted."
+      }
+    ],
+    "on_consent_withdrawal": [
+      {
+        "action": "terminate",
+        "description": "Terminate the interaction if consent is withdrawn."
+      },
+      {
+        "action": "quarantine_memory",
+        "description": "Quarantine retained memory pending operator review."
+      },
+      {
+        "action": "emit_receipt",
+        "description": "Emit a receipt documenting the withdrawal and follow-up actions."
+      }
+    ]
+  },
+  "soft_launch": {
+    "phase": "seed",
+    "participation_mode": "calibration_only",
+    "founder_input_mode": "calibration_only",
+    "early_human_input_mode": "calibration_only",
+    "early_agent_input_mode": "calibration_only",
+    "adaptive_optimization_enabled": false,
+    "scheduled_review_interval_days": 14,
+    "max_influence_share_per_actor": 0.1,
+    "max_influence_share_per_cluster": 0.25,
+    "minimum_human_participants": 30,
+    "minimum_agent_participants": 10,
+    "minimum_distinct_cohorts": 5,
+    "minimum_distinct_problem_domains": 4,
+    "governance_unlock_thresholds": [
+      {
+        "threshold_id": "minimum_human_participants",
+        "description": "Minimum human participants required before governance-eligible directional changes.",
+        "minimum": 30,
+        "current": 0,
+        "required_for_governance": true
+      },
+      {
+        "threshold_id": "minimum_distinct_cohorts",
+        "description": "Minimum cohort diversity required before governance-eligible directional changes.",
+        "minimum": 5,
+        "current": 0,
+        "required_for_governance": true
+      }
+    ],
+    "notes": [
+      "Early participation improves mechanics and safety, not doctrine or governance."
+    ]
+  },
+  "metadata": {
+    "launch_posture": "private bounded workflow",
+    "notes": "First covenant draft for HAIC grounded correction flows."
+  }
+}

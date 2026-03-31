@@ -6,15 +6,9 @@ frontend Prism module can display run history without requiring the
 legacy_mvp service (port 8001) to be running.
 
 Endpoints:
-    GET  /v1/prism/runs             — list available run records (full)
-    GET  /v1/prism/runs/summary     — lightweight summaries (metadata only)
-    GET  /v1/prism/runs/{run_id}    — get a specific run record by ID
-    GET  /v1/prism/status           — PRISM system status (tool versions, model track)
-
-Outlier geometry fields (TurboQuant-inspired, v8 STG):
-    PrismRunSummary surfaces mean_quantization_hostility, mean_outlier_ratio,
-    mean_cardinal_proximity, and worst_layer_idx from EntropySnapshot records
-    so dashboards can flag quantization-hostile runs without loading full blobs.
+    GET  /v1/prism/runs          — list available run records
+    GET  /v1/prism/runs/{run_id} — get a specific run record by ID
+    GET  /v1/prism/status        — PRISM system status (tool versions, model track)
 """
 
 import json
@@ -31,16 +25,21 @@ logger = logging.getLogger(__name__)
 
 # ── Data directory ────────────────────────────────────────────────────────────
 
+# Records directory relative to the project root. Can be overridden via env.
 _RECORDS_DIR = Path(os.environ.get(
     "PRISM_RECORDS_DIR",
     Path(__file__).resolve().parents[3] / "data" / "records",
 ))
 
+# Active model track — overridable to avoid hardcoding the version string.
 _MODEL_TRACK = os.environ.get("PRISM_MODEL_TRACK", "qwen3.5-2b-haic-v7")
 
-# run_id validated before any filesystem lookup to prevent path traversal.
+# run_id must be alphanumeric with hyphens/underscores/dots, max 128 chars.
+# Validated before any filesystem lookup to prevent path traversal.
 _SAFE_RUN_ID_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9\-_\.]{0,127}$')
 
+# Warn at import time if the directory doesn't exist so operators see it in
+# the startup log rather than silently getting empty /runs responses.
 if not _RECORDS_DIR.exists():
     logger.warning(
         f"prism: records directory not found: {_RECORDS_DIR} — "
@@ -52,9 +51,9 @@ if not _RECORDS_DIR.exists():
 # ── Models ─────────────────────────────────────────────────────────────────────
 
 class PrismRunSummary(BaseModel):
-    """Lightweight summary returned in the list-summary endpoint."""
+    """Lightweight summary returned in the list endpoint."""
     id: str
-    source: str
+    source: str          # filename stem
     model_name: Optional[str] = None
     run_kind: Optional[str] = None
     status: Optional[str] = None
@@ -80,6 +79,7 @@ class PrismStatus(BaseModel):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _load_record(path: Path) -> dict[str, Any]:
+    """Load a JSON record file, returning {} on parse error."""
     try:
         with path.open(encoding="utf-8") as fh:
             return json.load(fh)
@@ -89,45 +89,58 @@ def _load_record(path: Path) -> dict[str, Any]:
 
 
 def _records() -> list[Path]:
+    """Return all .json files in the records directory, sorted by mtime desc."""
     if not _RECORDS_DIR.exists():
+        logger.warning(f"prism: records directory does not exist: {_RECORDS_DIR}")
         return []
-    return sorted(
+    paths = sorted(
         _RECORDS_DIR.glob("*.json"),
         key=lambda p: p.stat().st_mtime,
         reverse=True,
     )
+    return paths
 
 
 def _make_summary(path: Path, data: dict[str, Any]) -> PrismRunSummary:
+    """Build a PrismRunSummary from a record dict."""
+    # Records may be raw PRISM probes or Maestro learning-run exports.
+    # Try several known shapes.
     run_id = (
-        data.get("id") or data.get("run_id") or data.get("session_id") or path.stem
+        data.get("id")
+        or data.get("run_id")
+        or data.get("session_id")
+        or path.stem
     )
     model_name = (
-        data.get("model_name") or data.get("base_model_ref") or data.get("model") or None
+        data.get("model_name")
+        or data.get("base_model_ref")
+        or data.get("model")
+        or None
     )
-    run_kind   = data.get("run_kind") or data.get("kind") or "probe"
-    status     = data.get("status") or "unknown"
+    run_kind = data.get("run_kind") or data.get("kind") or "probe"
+    status   = data.get("status") or "unknown"
     updated_at = (
-        data.get("updated_at") or data.get("timestamp") or data.get("created_at") or None
+        data.get("updated_at")
+        or data.get("timestamp")
+        or data.get("created_at")
+        or None
     )
 
     entropy_proof = data.get("entropy_delta_proof") or data.get("delta_proof") or {}
     before = data.get("entropy_snapshot_before") or data.get("snapshot_before") or {}
     after  = data.get("entropy_snapshot_after")  or data.get("snapshot_after")  or {}
 
-    has_proof  = bool(entropy_proof)
-    has_layers = bool(
+    has_proof   = bool(entropy_proof)
+    has_layers  = bool(
         (before.get("layer_profiles") if isinstance(before, dict) else None)
         or (after.get("layer_profiles") if isinstance(after, dict) else None)
     )
 
-    # TurboQuant aggregates — prefer "after" snapshot (post-training state),
+    # Extract TurboQuant aggregates — prefer the "after" snapshot (post-training),
     # fall back to "before", then to top-level fields on the record itself.
-    tq_source = (
-        after  if isinstance(after, dict) and after else
-        before if isinstance(before, dict) and before else
-        data
-    )
+    tq_source = (after if isinstance(after, dict) and after else
+                 before if isinstance(before, dict) and before else
+                 data)
     mean_outlier_ratio        = tq_source.get("mean_outlier_ratio")
     mean_cardinal_proximity   = tq_source.get("mean_cardinal_proximity")
     mean_quantization_hostility = tq_source.get("mean_quantization_hostility")
@@ -158,25 +171,72 @@ def _make_summary(path: Path, data: dict[str, Any]) -> PrismRunSummary:
 
 
 def _normalize_run(path: Path, data: dict[str, Any]) -> dict[str, Any]:
-    """Return a normalized record dict matching the frontend LearningRun shape."""
+    """
+    Return a normalized record dict that matches the frontend LearningRun shape.
+
+    Records on disk may be raw PRISM probe results, SGT output dicts, or Maestro
+    learning-run exports.  This function ensures all required LearningRun fields
+    are present with sensible fallbacks so the frontend can render without errors.
+
+    The original dict is not mutated; a shallow-merged copy is returned.
+    """
     run_id = str(
-        data.get("id") or data.get("run_id") or data.get("session_id") or path.stem
+        data.get("id")
+        or data.get("run_id")
+        or data.get("session_id")
+        or path.stem
     )
     base_model_ref = str(
-        data.get("base_model_ref") or data.get("model_name") or data.get("model") or "unknown"
+        data.get("base_model_ref")
+        or data.get("model_name")
+        or data.get("model")
+        or "unknown"
     )
-    run_kind    = str(data.get("run_kind") or data.get("kind") or "probe")
-    status      = str(data.get("status") or "unknown")
+    run_kind = str(data.get("run_kind") or data.get("kind") or "probe")
+    status   = str(data.get("status") or "unknown")
     source_axis = str(data.get("source_axis") or data.get("axis") or "unknown")
-    updated_at  = str(
-        data.get("updated_at") or data.get("timestamp") or data.get("created_at") or ""
+    updated_at = str(
+        data.get("updated_at")
+        or data.get("timestamp")
+        or data.get("created_at")
+        or ""
     )
 
-    entropy_before = data.get("entropy_snapshot_before") or data.get("snapshot_before") or None
-    entropy_after  = data.get("entropy_snapshot_after")  or data.get("snapshot_after")  or None
-    entropy_proof  = data.get("entropy_delta_proof")     or data.get("delta_proof")      or None
+    # Carry entropy fields through using both naming conventions.
+    entropy_before = (
+        data.get("entropy_snapshot_before")
+        or data.get("snapshot_before")
+        or None
+    )
+    entropy_after = (
+        data.get("entropy_snapshot_after")
+        or data.get("snapshot_after")
+        or None
+    )
+    entropy_proof = (
+        data.get("entropy_delta_proof")
+        or data.get("delta_proof")
+        or None
+    )
 
-    return {
+    # Hoist TurboQuant aggregates to the top level so consumers don't have to
+    # dig into nested snapshot dicts.  Prefer the "after" snapshot (post-training)
+    # then fall back to "before", then to any top-level fields already present.
+    tq_source = (entropy_after if isinstance(entropy_after, dict) and entropy_after else
+                 entropy_before if isinstance(entropy_before, dict) and entropy_before else
+                 data)
+    tq_fields: dict[str, Any] = {}
+    for _tq_key in (
+        "mean_outlier_ratio",
+        "mean_cardinal_proximity",
+        "mean_quantization_hostility",
+        "worst_layer_idx",
+    ):
+        _val = tq_source.get(_tq_key)
+        if _val is not None:
+            tq_fields[_tq_key] = _val
+
+    normalized: dict[str, Any] = {
         **data,
         "id": run_id,
         "base_model_ref": base_model_ref,
@@ -188,7 +248,9 @@ def _normalize_run(path: Path, data: dict[str, Any]) -> dict[str, Any]:
         "entropy_snapshot_after": entropy_after,
         "entropy_delta_proof": entropy_proof,
         "_source_file": path.stem,
+        **tq_fields,
     }
+    return normalized
 
 
 # ── Router ─────────────────────────────────────────────────────────────────────
@@ -198,27 +260,33 @@ router = APIRouter(prefix="/v1/prism", tags=["prism"])
 
 @router.get("/status", response_model=PrismStatus)
 def prism_status():
-    """PRISM system status: record count, model track, tool registry. Public read-only."""
+    """
+    Return PRISM system status: record count, model track, and tool registry.
+    No auth required — public read-only metadata.
+    """
     records = _records()
     return PrismStatus(
-        records_dir=str(_RECORDS_DIR),
+        records_dir=_RECORDS_DIR.name,
         record_count=len(records),
         model_track=_MODEL_TRACK,
         tools=[
-            {"name": "TransformerLens",    "role": "activation-inspection",    "url": "https://github.com/TransformerMechInterp/TransformerLens"},
-            {"name": "CircuitsVis",         "role": "notebook-visualization",   "url": "https://github.com/TransformerMechInterp/CircuitsVis"},
-            {"name": "NNsight",             "role": "causal-intervention",      "url": "https://nnsight.net/"},
-            {"name": "Neuronpedia",         "role": "sae-feature-dashboard",    "url": "https://docs.neuronpedia.org/features"},
-            {"name": "AttributionGraphs",   "role": "circuit-tracing",          "url": "https://transformer-circuits.pub/2025/attribution-graphs/methods.html"},
-            {"name": "GemmaScope2",         "role": "sae-weights-reference",    "url": "https://deepmind.google/models/gemma/gemma-scope/"},
-            {"name": "BertViz",             "role": "attention-visualization",  "url": "https://github.com/jessevig/bertviz"},
+            {"name": "TransformerLens", "role": "activation-inspection", "url": "https://github.com/TransformerMechInterp/TransformerLens"},
+            {"name": "CircuitsVis",     "role": "notebook-visualization", "url": "https://github.com/TransformerMechInterp/CircuitsVis"},
+            {"name": "NNsight",         "role": "causal-intervention",    "url": "https://nnsight.net/"},
+            {"name": "Neuronpedia",     "role": "sae-feature-dashboard",  "url": "https://docs.neuronpedia.org/features"},
+            {"name": "AttributionGraphs","role": "circuit-tracing",       "url": "https://transformer-circuits.pub/2025/attribution-graphs/methods.html"},
+            {"name": "GemmaScope2",     "role": "sae-weights-reference",  "url": "https://deepmind.google/models/gemma/gemma-scope/"},
+            {"name": "BertViz",         "role": "attention-visualization","url": "https://github.com/jessevig/bertviz"},
         ],
     )
 
 
 @router.get("/runs/summary", response_model=list[PrismRunSummary])
 def list_prism_runs_summary():
-    """Lightweight summaries of all PRISM run records (metadata + outlier geometry flags)."""
+    """
+    List lightweight summaries of all PRISM run records.
+    Used by dashboards that only need metadata (count, flags) without full records.
+    """
     summaries = []
     for path in _records():
         data = _load_record(path)
@@ -233,7 +301,16 @@ def list_prism_runs_summary():
 
 @router.get("/runs", response_model=list[dict])
 def list_prism_runs():
-    """List all PRISM run records as full normalized dicts. Sorted newest-first."""
+    """
+    List all available PRISM run records from data/records/ as full normalized dicts.
+
+    Returns each record in a shape compatible with the frontend LearningRun type:
+    required fields (id, base_model_ref, run_kind, status, source_axis, updated_at)
+    are always present with fallbacks; optional entropy snapshot and proof fields
+    are passed through as-is from the underlying record file.
+
+    Sorted by file modification time (newest first).
+    """
     runs = []
     for path in _records():
         data = _load_record(path)
@@ -248,7 +325,10 @@ def list_prism_runs():
 
 @router.get("/runs/{run_id}", response_model=dict)
 def get_prism_run(run_id: str):
-    """Return the full JSON record for a given run ID or filename stem."""
+    """
+    Return the full JSON record for a given run ID or filename stem.
+    Searches by id/run_id field first, then by filename stem.
+    """
     if not _SAFE_RUN_ID_RE.match(run_id):
         raise HTTPException(status_code=404, detail=f"PRISM run not found: {run_id}")
 
@@ -256,8 +336,10 @@ def get_prism_run(run_id: str):
         data = _load_record(path)
         if not data:
             continue
+        # Match by logical ID field (falls back to filename stem when no id fields present)
         if str(data.get("id") or data.get("run_id") or data.get("session_id") or path.stem) == run_id:
             return _normalize_run(path, data)
+        # Match by filename stem (handles case where record has a different logical id)
         if path.stem == run_id:
             return _normalize_run(path, data)
 
