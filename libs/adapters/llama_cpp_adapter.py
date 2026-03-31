@@ -7,9 +7,9 @@ the fine-tuned Qwen GGUF model as a drop-in replacement for the MockAdapter.
 Configuration (env vars):
     LLAMACPP_BASE_URL          Base URL of the llama.cpp server (required, e.g. http://localhost:<port>)
     LLAMACPP_MODEL             Model name string sent in API requests (required)
-    LLAMACPP_MAX_TOKENS        Max tokens per response (default: 1500 — covers Qwen3 <think> block + answer)
+    LLAMACPP_MAX_TOKENS        Max tokens per response (default: 1500)
     LLAMACPP_TEMPERATURE       Sampling temperature (default: 0.4)
-    LLAMACPP_REPEAT_PENALTY    Repeat penalty to break Qwen3 thinking loops (default: 1.3)
+    LLAMACPP_REPEAT_PENALTY    Repeat penalty for reasoning-loop suppression (default: 1.3)
     LLAMACPP_SYSTEM_PROMPT_PATH  Path to system prompt file (default: auto-detects sgt/prompts/base_interviewer.txt)
     LLAMACPP_TIMEOUT           HTTP timeout in seconds (default: 60)
 
@@ -124,11 +124,11 @@ class LlamaCppAdapter(BaseAdapter):
     def __init__(self) -> None:
         self.base_url = os.environ.get("LLAMACPP_BASE_URL", "").rstrip("/")
         self.model_name = os.environ.get("LLAMACPP_MODEL", "")
-        # 2000 tokens: safe budget for Qwen3 <think> block (can be long) + answer
+        # 2000 tokens: safe budget for reasoning block + answer
         self.max_tokens = int(os.environ.get("LLAMACPP_MAX_TOKENS", "2000"))
         # 0.4 temperature — lower than default to reduce drift while allowing variety
         self.temperature = float(os.environ.get("LLAMACPP_TEMPERATURE", "0.4"))
-        # repeat_penalty=1.3 breaks the Qwen3 reasoning loop so </think> is reliably reached
+        # repeat_penalty=1.3 helps reasoning loops terminate reliably
         self.repeat_penalty = float(os.environ.get("LLAMACPP_REPEAT_PENALTY", "1.3"))
         self.timeout = float(os.environ.get("LLAMACPP_TIMEOUT", "60"))
         self.system_prompt = _load_system_prompt()
@@ -144,9 +144,9 @@ class LlamaCppAdapter(BaseAdapter):
     @staticmethod
     def _strip_thinking(text: str) -> str:
         """
-        Remove Qwen3 <think>...</think> reasoning blocks from the output.
+        Remove <think>...</think> reasoning blocks from the output.
 
-        The fine-tuned model may produce internal reasoning wrapped in <think> tags
+        Some models produce internal reasoning wrapped in <think> tags
         before emitting the final answer. We strip these so the participant only
         sees the question.
         """
@@ -259,7 +259,7 @@ class LlamaCppAdapter(BaseAdapter):
 
         try:
             # Accumulate the full response text so we can strip <think> blocks
-            # before streaming back to the client. Qwen3 thinking tokens can
+            # before streaming back to the client. Reasoning tokens can
             # span many chunks, so we cannot strip inline.
             full_text = ""
             model_name = self.model_name

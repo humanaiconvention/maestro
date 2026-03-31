@@ -1,12 +1,12 @@
 """
 local_model_adapter.py — LocalModelAdapter for the HAIC grounding interviewer.
 
-Loads a local fine-tuned Qwen model (v6 or v7 merged) and serves it through
+Loads a local fine-tuned model from a merged checkpoint and serves it through
 the standard BaseAdapter interface so the gateway can use it as a drop-in
 replacement for the MockAdapter or AnthropicAdapter.
 
 Configuration (env vars):
-    LOCAL_MODEL_PATH   Path to merged model dir (default: auto-detects v7, then v6)
+    LOCAL_MODEL_PATH   Path to merged model dir (required — set via env var)
     LOCAL_MODEL_MAX_NEW_TOKENS   Max tokens per response (default: 120)
     LOCAL_MODEL_TEMPERATURE      Sampling temperature (default: 0.3)
     LOCAL_MODEL_CONSTRAINED      If "true", appends the constrained prompt suffix (default: false)
@@ -96,14 +96,12 @@ def _default_model_path() -> str:
     repo_root = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "..", "..")
     )
-    for candidate in ["experiments/qwen3_5_2b/v7/merged",
-                      "experiments/qwen3_5_2b/v6/merged"]:
-        full = os.path.join(repo_root, candidate)
-        if os.path.isdir(full) and os.path.exists(os.path.join(full, "config.json")):
+    # No default path — set LOCAL_MODEL_PATH to your merged model directory.
+    return None
             logger.info(f"LocalModelAdapter: auto-detected model at {full}")
             return full
     raise FileNotFoundError(
-        "No merged Qwen model found at experiments/qwen3_5_2b/v7/merged or v6/merged. "
+        "LOCAL_MODEL_PATH is not set. Point it to your merged model directory."
         "Set LOCAL_MODEL_PATH env var to the correct path."
     )
 
@@ -114,7 +112,7 @@ def _default_model_path() -> str:
 
 class LocalModelAdapter(BaseAdapter):
     """
-    Serves the fine-tuned Qwen grounding interviewer from a local merged model.
+    Serves a local fine-tuned model from a merged checkpoint directory.
 
     The model is loaded lazily on the first call. Inference runs in a thread
     pool executor to avoid blocking the FastAPI event loop.

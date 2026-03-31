@@ -51,7 +51,7 @@ _FULL_RECORD = {
     "title": "v7 grounding run",
     "objective": "Improve hedging handling",
     "hypothesis_or_goal": "Constrained mode echoes feeling words",
-    "model_or_agent_version": "v7",
+    "model_or_agent_version": "v1",
     "tuned_model_ref": "example-model-v1",
     "entropy_snapshot_before": {
         "model_name": "example-model",
