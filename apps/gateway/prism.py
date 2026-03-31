@@ -3,7 +3,7 @@ Prism API routes for the Maestro gateway.
 
 Serves PRISM run data files from the data/records/ directory so the
 frontend Prism module can display run history without requiring the
-legacy_mvp service (port 8001) to be running.
+frontend Prism module can display run history without requiring the legacy service.
 
 Endpoints:
     GET  /v1/prism/runs          — list available run records
@@ -32,7 +32,7 @@ _RECORDS_DIR = Path(os.environ.get(
 ))
 
 # Active model track — overridable to avoid hardcoding the version string.
-_MODEL_TRACK = os.environ.get("PRISM_MODEL_TRACK", "qwen3.5-2b-haic-v7")
+_MODEL_TRACK = os.environ.get("PRISM_MODEL_TRACK", "")
 
 # run_id must be alphanumeric with hyphens/underscores/dots, max 128 chars.
 # Validated before any filesystem lookup to prevent path traversal.

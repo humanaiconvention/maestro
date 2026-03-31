@@ -1,9 +1,9 @@
 """End-to-end dry-run: exercises the real ML pipeline with 1 generation, 10 samples.
 
 Validates that model loading → LoRA init → training → generation → evaluation →
-report generation all work together on real hardware (BEAST float16 or L4 bfloat16).
+report generation all work together on real hardware (float16 or bfloat16).
 
-Usage (BEAST):
+Usage (GPU, float16):
     python scripts/dry_run_e2e.py
 
 Usage (L4 with bfloat16):
@@ -35,7 +35,7 @@ def main():
                         help="HuggingFace model name (default: Qwen/Qwen2.5-0.5B)")
     parser.add_argument("--dtype", type=str, default="float16",
                         choices=["float16", "bfloat16", "float32"],
-                        help="Torch dtype (float16 for BEAST, bfloat16 for L4)")
+                        help="Torch dtype: float16 (GPU), bfloat16 (newer GPU), float32 (CPU)")
     parser.add_argument("--samples", type=int, default=10,
                         help="Number of training samples per generation (default: 10)")
     parser.add_argument("--generations", type=int, default=1,

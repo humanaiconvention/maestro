@@ -1,8 +1,12 @@
-﻿from sqlalchemy import create_engine
+import os
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-# Use a mock/default URL. In production, this comes from env vars.
-SQLALCHEMY_DATABASE_URL = "postgresql://maestro:maestro_password@localhost:5432/maestro"
+# Set DATABASE_URL in your environment. See .env.example for the format.
+SQLALCHEMY_DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql://postgres:postgres@localhost:5432/maestro",
+)
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

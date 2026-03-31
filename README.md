@@ -116,8 +116,8 @@ python -m pytest legacy_mvp/tests/ -v
 **Start the domain API server:**
 ```bash
 cd legacy_mvp
-uvicorn app.main:app --reload --port 8001
-# Interactive docs: http://localhost:8001/docs
+uvicorn app.main:app --reload
+# Interactive docs: http://localhost:8000/docs (or the port you chose)
 ```
 
 ---
@@ -209,7 +209,7 @@ LearningRun (ACTIVE)
 
 ## API Reference
 
-**Domain service:** `http://localhost:8001` | Interactive docs: `/docs`
+**Domain service:** `http://localhost:<port>` | Interactive docs: `/docs`
 **Auth header:** `X-Maestro-API-Key: <key>`
 
 ### Authentication
@@ -220,13 +220,13 @@ Two-tier validation on all `API Key` endpoints:
 
 ```bash
 # Create a per-agent key (returns raw_key once — store it immediately)
-curl -X POST http://localhost:8001/api/api-keys \
+curl -X POST http://localhost:<port>/api/api-keys \
   -H "X-Maestro-API-Key: $MAESTRO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"agent_id": "<agent-uuid>", "label": "prod-agent-1"}'
 
 # Revoke a key
-curl -X DELETE http://localhost:8001/api/api-keys/<key-id> \
+curl -X DELETE http://localhost:<port>/api/api-keys/<key-id> \
   -H "X-Maestro-API-Key: $MAESTRO_API_KEY"
 ```
 

@@ -38,7 +38,7 @@ client = TestClient(app)
 
 _MINIMAL_RECORD = {
     "id": "run-abc-123",
-    "base_model_ref": "qwen3.5-2b",
+    "base_model_ref": "example-model",
     "run_kind": "sft",
     "status": "completed",
     "source_axis": "emotional_grounding",
@@ -52,9 +52,9 @@ _FULL_RECORD = {
     "objective": "Improve hedging handling",
     "hypothesis_or_goal": "Constrained mode echoes feeling words",
     "model_or_agent_version": "v7",
-    "tuned_model_ref": "qwen3.5-2b-haic-v7",
+    "tuned_model_ref": "example-model-v1",
     "entropy_snapshot_before": {
-        "model_name": "qwen3.5-2b",
+        "model_name": "example-model",
         "mean_spectral_entropy": 3.14,
         "mean_effective_dimension": 128.0,
         "mean_viability_score": 0.72,
@@ -65,7 +65,7 @@ _FULL_RECORD = {
         ],
     },
     "entropy_snapshot_after": {
-        "model_name": "qwen3.5-2b-haic-v7",
+        "model_name": "example-model-v1",
         "mean_spectral_entropy": 2.80,
         "mean_effective_dimension": 131.0,
         "mean_viability_score": 0.78,

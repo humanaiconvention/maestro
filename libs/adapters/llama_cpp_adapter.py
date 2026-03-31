@@ -5,8 +5,8 @@ Calls a running llama.cpp server (OpenAI-compatible API) so the gateway can use
 the fine-tuned Qwen GGUF model as a drop-in replacement for the MockAdapter.
 
 Configuration (env vars):
-    LLAMACPP_BASE_URL          Base URL of the llama.cpp server (default: http://localhost:8081)
-    LLAMACPP_MODEL             Model name string sent in API requests (default: qwen3.5-2b-haic-v7)
+    LLAMACPP_BASE_URL          Base URL of the llama.cpp server (required, e.g. http://localhost:<port>)
+    LLAMACPP_MODEL             Model name string sent in API requests (required)
     LLAMACPP_MAX_TOKENS        Max tokens per response (default: 1500 — covers Qwen3 <think> block + answer)
     LLAMACPP_TEMPERATURE       Sampling temperature (default: 0.4)
     LLAMACPP_REPEAT_PENALTY    Repeat penalty to break Qwen3 thinking loops (default: 1.3)
@@ -118,12 +118,12 @@ class LlamaCppAdapter(BaseAdapter):
     Routes inference to a running llama.cpp server via its OpenAI-compatible API.
 
     The server must be started separately — typically:
-        llama-server.exe -m <model.gguf> --port 8081 -c 4096 -np 1 --chat-template chatml
+        llama-server -m <model.gguf> --port <LLAMACPP_PORT> -c 4096 -np 1 --chat-template chatml
     """
 
     def __init__(self) -> None:
-        self.base_url = os.environ.get("LLAMACPP_BASE_URL", "http://localhost:8081").rstrip("/")
-        self.model_name = os.environ.get("LLAMACPP_MODEL", "qwen3.5-2b-haic-v7")
+        self.base_url = os.environ.get("LLAMACPP_BASE_URL", "").rstrip("/")
+        self.model_name = os.environ.get("LLAMACPP_MODEL", "")
         # 2000 tokens: safe budget for Qwen3 <think> block (can be long) + answer
         self.max_tokens = int(os.environ.get("LLAMACPP_MAX_TOKENS", "2000"))
         # 0.4 temperature — lower than default to reduce drift while allowing variety
