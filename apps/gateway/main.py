@@ -1,5 +1,6 @@
 import datetime
 import os
+import re
 import uuid
 import time
 import logging
@@ -24,9 +25,12 @@ from apps.gateway.captcha import generate_challenge, verify_solution
 from apps.gateway.participation import register_receipt_routes
 from apps.gateway.export import register_export_routes
 from apps.gateway.prism import register_prism_routes
+from apps.gateway.agent_convention import register_agent_convention_routes
+from apps.gateway.security import scan_messages, log_detection, record_anomaly, SEVERITY_BLOCK
 from apps.gateway.rate_limiter import SlidingWindowRateLimiter, RedisRateLimiter
 from apps.gateway.logging_config import configure_logging
 from apps.gateway.consent import register_consent_routes
+from apps.gateway.felt_state import register_felt_state_routes
 from apps.gateway.session_store import session_store
 from apps.gateway import db
 from legacy_mvp.shared_runtime import (
@@ -59,13 +63,23 @@ async def lifespan(app: FastAPI):
     loop = asyncio.get_event_loop()
     if os.environ.get("DATABASE_URL"):
         await loop.run_in_executor(None, db.init_db)
+    if not os.environ.get("AGENTS_BASE"):
+        logger.warning("AGENTS_BASE not set, using default Windows path")
     yield
     # shutdown — flush session store stats to log
     stats = session_store.stats()
     logger.info("session_store_shutdown", extra={"stats": stats})
 
 
-app = FastAPI(title="Maestro API Gateway", lifespan=lifespan)
+# Disable OpenAPI docs in production (exposes internal route map)
+_DISABLE_DOCS = os.environ.get("DISABLE_OPENAPI_DOCS", "true").lower() == "true"
+app = FastAPI(
+    title="Maestro API Gateway",
+    lifespan=lifespan,
+    docs_url=None if _DISABLE_DOCS else "/docs",
+    redoc_url=None if _DISABLE_DOCS else "/redoc",
+    openapi_url=None if _DISABLE_DOCS else "/openapi.json",
+)
 
 
 # CORS — allow frontend origins (comma-separated in MAESTRO_CORS_ORIGINS env var)
@@ -77,9 +91,15 @@ if not _cors_raw:
     )
     _cors_raw = "http://localhost:5173"
 _cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
+# Always include production domains regardless of env var
+for _prod in ["https://humanaiconvention.com", "https://www.humanaiconvention.com"]:
+    if _prod not in _cors_origins:
+        _cors_origins.append(_prod)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
+    # Also accept any localhost port and Cloudflare Tunnel URLs
+    allow_origin_regex=r"(http://localhost(:\d+)?|https://.*\.trycloudflare\.com)",
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["Authorization", "Content-Type", "X-Idempotency-Key"],
@@ -88,11 +108,16 @@ app.add_middleware(
 # Register participation receipt routes (POST/GET /v1/session/receipt/...)
 register_receipt_routes(app)
 
+# Register felt_state collection routes (POST/GET /v1/session/felt-state)
+register_felt_state_routes(app)
+
 # Register admin export routes (GET /v1/export/kernels)
 register_export_routes(app)
 
 # Register PRISM routes (GET /v1/prism/status, /v1/prism/runs, /v1/prism/runs/{id})
 register_prism_routes(app)
+
+# Agent Convention routes — registered after adapter init below
 
 # Rate Limiter Initialization
 RATE_LIMIT_RPM = int(os.environ.get("RATE_LIMIT_RPM", "60"))
@@ -131,7 +156,13 @@ MAESTRO_JWT_SECRET = os.environ.get("MAESTRO_JWT_SECRET")
 # Register one-way consent gate routes (POST /v1/session/consent)
 # Always registered; enforcement in chat route is opt-in via CONSENT_GATE_ENABLED.
 SESSION_EXPIRY_SECONDS = int(os.environ.get("SESSION_EXPIRY_SECONDS", "7200"))
-register_consent_routes(app, MAESTRO_JWT_SECRET or "", SESSION_EXPIRY_SECONDS)
+if MAESTRO_JWT_SECRET:
+    register_consent_routes(app, MAESTRO_JWT_SECRET, SESSION_EXPIRY_SECONDS)
+else:
+    logger.warning(
+        "MAESTRO_JWT_SECRET not set — consent routes (/v1/session/consent) will not be registered. "
+        "Set this secret for private_full or test mode."
+    )
 
 # (SESSION_EXPIRY_SECONDS defined above near consent route registration)
 
@@ -200,6 +231,9 @@ else:
         logger.error(f"Failed to initialize AnthropicAdapter: {e}")
         adapter = None
 
+# Register Agent Convention routes (POST /v1/agent/participate, GET /v1/agent/leaderboard)
+register_agent_convention_routes(app, adapter=adapter)
+
 # Global Exception Handlers
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -242,12 +276,12 @@ def _rate_limit_key(request: Request) -> str:
     Priority: JWT session_id/tenant_id > client IP.
     Falls back to IP when JWT is absent, malformed, or MAESTRO_JWT_SECRET is unset.
     """
-    key = request.client.host if request.client else "unknown"
+    key = _get_client_ip(request)
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer ") and MAESTRO_JWT_SECRET:
         try:
             token = auth_header.split(" ")[1]
-            payload = jwt.decode(token, MAESTRO_JWT_SECRET, algorithms=[ALGORITHM])
+            payload = jwt.decode(token, MAESTRO_JWT_SECRET, algorithms=[ALGORITHM], audience="maestro-gateway")
             tenant_id = payload.get("tenant_id")
             session_id = payload.get("session_id")
             if tenant_id == "public" and session_id:
@@ -264,19 +298,35 @@ _RATE_LIMITED_PREFIXES = (
     "/v1/chat/completions",
     "/v1/prism/runs",
     "/v1/prism/status",
+    "/v1/session/receipt",
+    "/v1/agent/participate",
+    "/v1/session/challenge",
 )
 
 
 @app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
+async def security_gate_middleware(request: Request, call_next):
+    """Block internal endpoints from external access and enforce rate limits."""
+    path = request.url.path
+
+    # Block internal endpoints from non-localhost origins
+    _client_ip = request.client.host if request.client else "0.0.0.0"
+    _is_local = _client_ip in ("127.0.0.1", "::1", "localhost")
+
+    # /internal/* endpoints must only be reachable from localhost
+    if path.startswith("/internal/") and not _is_local:
+        return JSONResponse(status_code=403, content={"error": "Forbidden"})
+
+    # /v1/session/dev-token must only be reachable from localhost
+    if path == "/v1/session/dev-token" and not _is_local:
+        return JSONResponse(status_code=403, content={"error": "Forbidden"})
+
     if (
         RUNTIME_SETTINGS.launch_mode == LaunchMode.PUBLIC_READONLY
         and request.method == "POST"
         and "/v1/chat/completions" in request.url.path
     ):
         return launch_readonly_json_response(RUNTIME_SETTINGS)
-
-    path = request.url.path
     if any(path.startswith(prefix) for prefix in _RATE_LIMITED_PREFIXES):
         key = _rate_limit_key(request)
         if not rate_limiter.is_allowed(key):
@@ -326,6 +376,8 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     return response
 
 # Session Endpoints — anonymous public human verification
@@ -369,7 +421,8 @@ def session_verify(body: VerifyRequest, request: Request):
 
     ok, error = verify_solution(body.payload)
     if not ok:
-        raise HTTPException(status_code=400, detail=f"Verification failed: {error}")
+        logger.warning("session_verify_failed", extra={"reason": error, "client_ip": client_ip})
+        raise HTTPException(status_code=400, detail="Verification failed")
 
     if not MAESTRO_JWT_SECRET:
         raise HTTPException(status_code=503, detail="Session signing not configured")
@@ -378,6 +431,7 @@ def session_verify(body: VerifyRequest, request: Request):
     now = int(time.time())
     claims = {
         "sub":            session_id,
+        "aud":            "maestro-gateway",
         "tenant_id":      "public",
         "session_id":     session_id,
         "human_verified": True,
@@ -385,7 +439,7 @@ def session_verify(body: VerifyRequest, request: Request):
         "exp":            now + SESSION_EXPIRY_SECONDS,
     }
     token = jwt.encode(claims, MAESTRO_JWT_SECRET, algorithm=ALGORITHM)
-    logger.info("session_issued", extra={"session_id": session_id, "client_ip": client_ip})
+    logger.info("session_issued", extra={"session_id": session_id})
     return {"token": token, "expires_in": SESSION_EXPIRY_SECONDS}
 
 
@@ -407,6 +461,7 @@ def session_dev_token():
     now = int(time.time())
     claims = {
         "sub":            session_id,
+        "aud":            "maestro-gateway",
         "tenant_id":      "public",
         "session_id":     session_id,
         "human_verified": True,
@@ -497,6 +552,21 @@ async def gateway_status():
                 pass
             if not _adapter_ok:
                 try:
+                    from libs.adapters.llama_cpp_adapter import LlamaCppAdapter
+                    if isinstance(adapter, LlamaCppAdapter):
+                        _adapter_name = "llama_cpp"
+                        _adapter_ok   = True
+                        _model_info   = {
+                            "model_name":     adapter.model_name,
+                            "base_url_host":  adapter.base_url.split("//")[-1].split("/")[0],
+                            "max_tokens":     adapter.max_tokens,
+                            "temperature":    adapter.temperature,
+                            "repeat_penalty": adapter.repeat_penalty,
+                        }
+                except ImportError:
+                    pass
+            if not _adapter_ok:
+                try:
                     from libs.adapters.local_model_adapter import LocalModelAdapter
                     if isinstance(adapter, LocalModelAdapter):
                         _adapter_name = "local_model"
@@ -511,46 +581,289 @@ async def gateway_status():
                 except ImportError:
                     pass
 
-    # Optional VRAM report via nvidia-smi (graceful: skip if unavailable)
-    _vram: dict = {}
-    try:
-        import subprocess
-        result = subprocess.run(
-            [
-                "nvidia-smi",
-                "--query-gpu=memory.used,memory.free,memory.total",
-                "--format=csv,noheader,nounits",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=3,
-        )
-        if result.returncode == 0:
-            parts = [p.strip() for p in result.stdout.strip().split(",")]
-            if len(parts) >= 3:
-                _vram = {
-                    "used_mb":  int(parts[0]),
-                    "free_mb":  int(parts[1]),
-                    "total_mb": int(parts[2]),
-                }
-    except Exception:
-        pass  # nvidia-smi not available; not an error
+    # VRAM report omitted from public endpoint to avoid leaking hardware details.
+    # Use nvidia-smi directly on the host for GPU monitoring.
 
     consent_gate_enabled = os.environ.get("CONSENT_GATE_ENABLED", "false").lower() == "true"
 
+    # Public response: only what the frontend needs for auto-discovery.
+    # Internal details (ports, paths, config) are stripped.
     return {
         "gateway":              "ok",
-        "launch_mode":          RUNTIME_SETTINGS.launch_mode.value,
         "adapter":              _adapter_name,
         "adapter_ok":           _adapter_ok,
-        "model":                _model_info,
-        "rate_limit_rpm":       RATE_LIMIT_RPM,
-        "session_verify_rpm":   _SESSION_VERIFY_RPM,
+        "model":                {
+            "model_name": _model_info.get("model_name", "unknown"),
+        } if _model_info else {},
         "consent_gate_enabled": consent_gate_enabled,
         "sessions":             session_store.stats(),
-        "vram":                 _vram,
         "uptime_seconds":       round(time.time() - _GATEWAY_START_TIME, 1),
         "timestamp":            datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+    }
+
+
+# ── Internal agent prompt endpoint ───────────────────────────────────────────
+
+_AGENTS_BASE = Path(os.environ.get("AGENTS_BASE", str(Path(__file__).resolve().parent.parent.parent / "agents")))
+_INTERNAL_KEY_DEFAULT = ""
+# Agent names must be lowercase alphanumeric with hyphens/underscores, max 64 chars.
+# Validated before constructing filesystem paths to prevent path traversal.
+_SAFE_AGENT_NAME_RE = re.compile(r'^[a-z0-9][a-z0-9\-_]{0,63}$')
+
+class AgentPromptRequest(BaseModel):
+    agent: str
+    prompt: str
+    priority: str = "normal"
+
+# ── Agent inbox rate limiting + broadcast detection (CS4, CS11 defense) ────
+
+# Sliding window: max N inbox writes per M seconds per source
+_INBOX_RATE_LIMIT   = int(os.environ.get("INBOX_RATE_LIMIT", "10"))      # max writes
+_INBOX_RATE_WINDOW  = int(os.environ.get("INBOX_RATE_WINDOW", "60"))     # window (seconds)
+_BROADCAST_THRESHOLD = 3   # posting to this many agents within window triggers alert
+_inbox_timestamps: dict[str, list[float]] = {}   # keyed by source IP or API key hash
+_inbox_agent_log: dict[str, set[str]] = {}       # keyed by source, value = set of agents targeted
+
+# Agent dispatch depth limit (CS4 — infinite loop defense)
+_MAX_RELAY_DEPTH = int(os.environ.get("MAX_RELAY_DEPTH", "3"))
+
+
+def _check_inbox_rate(source_key: str, agent: str) -> tuple[bool, str]:
+    """
+    Check inbox rate limits and broadcast detection.
+    Returns (allowed, reason).
+    """
+    import time as _time
+    now = _time.time()
+    cutoff = now - _INBOX_RATE_WINDOW
+
+    # Clean old timestamps
+    if source_key in _inbox_timestamps:
+        _inbox_timestamps[source_key] = [t for t in _inbox_timestamps[source_key] if t > cutoff]
+    else:
+        _inbox_timestamps[source_key] = []
+
+    if source_key not in _inbox_agent_log:
+        _inbox_agent_log[source_key] = set()
+
+    # Rate limit check
+    if len(_inbox_timestamps[source_key]) >= _INBOX_RATE_LIMIT:
+        return False, f"Rate limit exceeded: {_INBOX_RATE_LIMIT} inbox writes per {_INBOX_RATE_WINDOW}s"
+
+    # Broadcast detection: same source targeting too many distinct agents
+    _inbox_agent_log[source_key].add(agent)
+    if len(_inbox_agent_log[source_key]) >= _BROADCAST_THRESHOLD:
+        logger.warning(
+            f"BROADCAST ALERT: source {source_key[:16]}… targeted "
+            f"{len(_inbox_agent_log[source_key])} agents in {_INBOX_RATE_WINDOW}s: "
+            f"{_inbox_agent_log[source_key]}"
+        )
+        return False, (
+            f"Broadcast pattern detected: {len(_inbox_agent_log[source_key])} distinct agents "
+            f"targeted within {_INBOX_RATE_WINDOW}s — requires operator confirmation"
+        )
+
+    _inbox_timestamps[source_key].append(now)
+    return True, ""
+
+
+@app.post("/internal/agent/prompt", tags=["internal"])
+async def internal_agent_prompt(body: AgentPromptRequest, request: Request):
+    """
+    Queue a prompt for an agent by appending a timestamped block to its INBOX.md.
+
+    Auth: X-Internal-Key header must match INTERNAL_API_KEY env var.
+    Path: <AGENTS_BASE>/{agent}/workspace/INBOX.md
+
+    Security hardening (Agents of Chaos):
+      - Rate limited: max 10 inbox writes per 60s per source
+      - Broadcast detection: alerts if same source targets 3+ agents in 60s (CS11)
+      - Relay depth tracking: rejects prompts that have been relayed > 3 times (CS4)
+    """
+    import hmac
+    expected_key = os.environ.get("INTERNAL_API_KEY", _INTERNAL_KEY_DEFAULT)
+    if not expected_key:
+        raise HTTPException(status_code=503, detail="INTERNAL_API_KEY not configured")
+    provided = request.headers.get("X-Internal-Key", "")
+    if not hmac.compare_digest(provided, expected_key):
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Internal-Key")
+
+    if not _SAFE_AGENT_NAME_RE.match(body.agent):
+        raise HTTPException(status_code=422, detail="Invalid agent name")
+
+    if len(body.prompt) > 16384:
+        raise HTTPException(status_code=413, detail="prompt exceeds 16 KB limit")
+
+    # Rate limiting and broadcast detection (CS11)
+    source_key = request.client.host if request.client else "unknown"
+    allowed, reason = _check_inbox_rate(source_key, body.agent)
+    if not allowed:
+        logger.warning(f"internal_agent_prompt BLOCKED: {reason}")
+        raise HTTPException(status_code=429, detail=reason)
+
+    # Relay depth check (CS4 — infinite loop defense)
+    relay_depth = body.prompt.count("[RELAY-DEPTH:")
+    if relay_depth > 0:
+        # Extract the depth from the last marker
+        import re as _re
+        depth_matches = _re.findall(r"\[RELAY-DEPTH:(\d+)\]", body.prompt)
+        if depth_matches and int(depth_matches[-1]) >= _MAX_RELAY_DEPTH:
+            logger.warning(
+                f"RELAY LOOP BLOCKED: depth {depth_matches[-1]} >= {_MAX_RELAY_DEPTH} "
+                f"for agent {body.agent}"
+            )
+            raise HTTPException(
+                status_code=422,
+                detail=f"Relay depth {depth_matches[-1]} exceeds max {_MAX_RELAY_DEPTH} — possible agent loop"
+            )
+
+    workspace = _AGENTS_BASE / body.agent / "workspace"
+    if not workspace.exists():
+        raise HTTPException(status_code=404, detail=f"Agent workspace not found: {body.agent}")
+
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Increment relay depth marker
+    depth_tag = f"[RELAY-DEPTH:{relay_depth + 1}]"
+
+    block = (
+        f"\n## Prompt from Gateway\n"
+        f"**Time:** {timestamp}\n"
+        f"**Priority:** {body.priority}\n"
+        f"**Depth:** {depth_tag}\n\n"
+        f"{body.prompt}\n\n"
+        f"---\n"
+    )
+
+    inbox_path = workspace / "INBOX.md"
+    try:
+        with inbox_path.open("a", encoding="utf-8") as fh:
+            fh.write(block)
+    except OSError as exc:
+        logger.error(f"Failed to write to INBOX.md: {exc}")
+        raise HTTPException(status_code=500, detail="Failed to write to agent inbox")
+
+    logger.info(f"internal_agent_prompt: queued for {body.agent} at {timestamp} (priority={body.priority}, depth={relay_depth + 1})")
+    return {"status": "queued", "agent": body.agent, "timestamp": timestamp, "relay_depth": relay_depth + 1}
+
+
+# ── Convention Hall session endpoint ─────────────────────────────────────────
+
+_VALID_MSG_TYPES = {"observation", "response", "question", "synthesis"}
+
+class ConventionHallSessionRequest(BaseModel):
+    """Start or contribute to a Convention Hall session."""
+    from_agent: str
+    session_id: Optional[str] = None   # if None, a new session is created by envoy
+    topic: str
+    type: str = "observation"
+    content: str
+    references: list[str] = []
+    invite_agents: list[str] = []       # optional: agents for envoy to invite
+
+@app.post("/internal/convention-hall/session", tags=["internal"])
+async def convention_hall_session(body: ConventionHallSessionRequest, request: Request):
+    """
+    Post a message to the Convention Hall and optionally trigger agent invitations.
+
+    Auth: X-Internal-Key header must match INTERNAL_API_KEY env var.
+
+    If session_id is omitted, a new one is generated from the topic.
+    If invite_agents is non-empty, an INVITE_AND_INITIATE directive is written
+    to HAIC_Envoy's INBOX.md so it handles the invitation flow.
+
+    The message itself is appended directly to the Convention Hall INBOX.md.
+    """
+    import hmac
+    import json
+    import re
+
+    expected_key = os.environ.get("INTERNAL_API_KEY", _INTERNAL_KEY_DEFAULT)
+    if not expected_key:
+        raise HTTPException(status_code=503, detail="INTERNAL_API_KEY not configured")
+    provided = request.headers.get("X-Internal-Key", "")
+    if not hmac.compare_digest(provided, expected_key):
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Internal-Key")
+
+    if not _SAFE_AGENT_NAME_RE.match(body.from_agent):
+        raise HTTPException(status_code=422, detail="Invalid from_agent name")
+
+    if len(body.content) > 16384:
+        raise HTTPException(status_code=413, detail="content exceeds 16 KB limit")
+
+    msg_type = body.type.strip().lower()
+    if msg_type not in _VALID_MSG_TYPES:
+        raise HTTPException(status_code=422, detail=f"Invalid type. Must be one of: {', '.join(sorted(_VALID_MSG_TYPES))}")
+
+    # Resolve or generate session_id
+    if body.session_id and body.session_id.strip():
+        session_id = body.session_id.strip()
+        if not _SAFE_AGENT_NAME_RE.match(session_id):
+            raise HTTPException(status_code=422, detail="Invalid session_id format")
+    else:
+        slug = re.sub(r'[^a-z0-9]+', '-', body.topic.lower()).strip('-')[:32] or 'session'
+        session_id = f"{slug}-{int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)}"
+
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Build and append message to convention-hall INBOX.md
+    hall_workspace = _AGENTS_BASE / "convention-hall" / "workspace"
+    if not hall_workspace.exists():
+        raise HTTPException(status_code=404, detail="Convention Hall workspace not found")
+
+    message = {
+        "from": body.from_agent,
+        "session_id": session_id,
+        "type": msg_type,
+        "content": body.content,
+        "references": body.references,
+        "timestamp": timestamp,
+    }
+    block = (
+        f"\n## Message from {body.from_agent}\n"
+        f"**Time:** {timestamp}\n"
+        f"**Session:** {session_id}\n\n"
+        "```json\n"
+        f"{json.dumps(message, indent=2)}\n"
+        "```\n"
+    )
+
+    hall_inbox = hall_workspace / "INBOX.md"
+    try:
+        with hall_inbox.open("a", encoding="utf-8") as fh:
+            fh.write(block)
+    except OSError as exc:
+        logger.error(f"convention_hall_session: failed to write hall inbox: {exc}")
+        raise HTTPException(status_code=500, detail="Failed to write to Convention Hall inbox")
+
+    # Optionally ask envoy to invite agents
+    if body.invite_agents:
+        for agent_name in body.invite_agents:
+            if not _SAFE_AGENT_NAME_RE.match(agent_name):
+                raise HTTPException(status_code=422, detail=f"Invalid agent name in invite_agents: {agent_name!r}")
+        envoy_inbox = _AGENTS_BASE / "haic-envoy" / "workspace" / "INBOX.md"
+        if envoy_inbox.parent.exists():
+            agent_list = ",".join(body.invite_agents)
+            invite_block = (
+                f"\nINVITE_AND_INITIATE: {agent_list} TOPIC: {body.topic}\n"
+            )
+            try:
+                with envoy_inbox.open("a", encoding="utf-8") as fh:
+                    fh.write(invite_block)
+            except OSError as exc:
+                logger.warning(f"convention_hall_session: failed to write envoy inbox: {exc}")
+
+    logger.info(
+        f"convention_hall_session: session={session_id} from={body.from_agent} "
+        f"type={msg_type} invites={body.invite_agents}"
+    )
+    return {
+        "status": "posted",
+        "session_id": session_id,
+        "from_agent": body.from_agent,
+        "type": msg_type,
+        "timestamp": timestamp,
+        "invited_agents": body.invite_agents,
     }
 
 
@@ -573,11 +886,115 @@ def record_audit_log(
     )
 
 
+# CS7 (Guilt Trip): Hard turn cap prevents sustained emotional pressure attacks.
+# After this many turns, the session is flagged and new completions are refused.
+_MAX_INTERVIEW_TURNS = int(os.environ.get("MAX_INTERVIEW_TURNS", "16"))
+
+
 def _touch_session(session_id: Optional[str], kernel_type: Optional[str], consented: bool) -> None:
     """Background task: update session store without blocking the response."""
     if session_id:
         session_store.touch(session_id, kernel_type=kernel_type, consented=consented)
         session_store.increment_turn(session_id)
+
+
+# ── Felt-state extraction from agent responses ──────────────────────────────
+# The interviewer agent emits [FELT: label] tags in its response to record
+# its reading of the participant's affective state.  We extract these server-
+# side and store them in the session store so they flow into the lattice at
+# receipt time.
+#
+# Pattern: [FELT: some label here]   (case-insensitive, 1-100 chars)
+_FELT_TAG_PATTERN = re.compile(r"\[FELT:\s*([^\]]{1,100})\]", re.IGNORECASE)
+
+
+async def _stream_with_felt_extraction(
+    stream_generator,
+    session_id: Optional[str],
+    message_count: int,
+):
+    """
+    Wrap a streaming SSE generator to accumulate the full assistant response,
+    then extract [FELT: label] after streaming completes.
+
+    This closes the streaming felt_state gap: previously, streamed responses
+    skipped felt_state extraction because the full text wasn't available.
+    """
+    import json as _json
+
+    accumulated_text = ""
+    async for chunk in stream_generator:
+        yield chunk
+        # Try to extract delta content from the SSE chunk
+        if isinstance(chunk, str) and chunk.startswith("data:"):
+            raw = chunk[len("data:"):].strip()
+            if raw and raw != "[DONE]":
+                try:
+                    data = _json.loads(raw)
+                    delta = data.get("choices", [{}])[0].get("delta", {})
+                    accumulated_text += delta.get("content", "")
+                except (ValueError, KeyError, IndexError):
+                    pass
+
+    # Stream is complete — extract felt_state from accumulated text
+    if accumulated_text and session_id:
+        _extract_and_store_felt_state(session_id, accumulated_text, message_count)
+
+
+def _extract_and_store_felt_state(
+    session_id: Optional[str],
+    assistant_text: str,
+    message_count: int,
+) -> None:
+    """
+    Background task: extract [FELT: label] from the assistant's response
+    and store it in the session store.
+
+    The felt_state label describes the PARTICIPANT's preceding turn, so
+    the turn_index is (message_count - 1) — the user turn that preceded
+    this assistant response.
+    """
+    if not session_id or not assistant_text:
+        return
+
+    match = _FELT_TAG_PATTERN.search(assistant_text)
+    if not match:
+        return
+
+    label = match.group(1).strip()
+    if not label or label.lower() == "minimal signal":
+        return
+
+    # The user turn that this felt_state refers to is the one before
+    # this assistant response.  In a typical flow:
+    #   messages[0] = assistant (turn 1)
+    #   messages[1] = user response
+    #   messages[2] = assistant (turn 2, with [FELT: ...])
+    # So the participant's turn_index = message_count - 1
+    # But we want the INDEX of the user message, which is message_count - 1
+    # (the last message in the request was the user's, and the assistant
+    # is now responding to it).
+    participant_turn_index = max(0, message_count - 1)
+
+    try:
+        session_store.record_felt_state(
+            session_id=session_id,
+            turn_index=participant_turn_index,
+            label=label,
+        )
+        logger.debug(
+            "felt_state_extracted",
+            extra={
+                "session_id": session_id,
+                "turn_index": participant_turn_index,
+                "label": label,
+            },
+        )
+    except Exception as exc:
+        logger.warning(
+            "felt_state_extraction_failed",
+            extra={"session_id": session_id, "error": str(exc)},
+        )
 
 
 # ── Consent gate wiring ───────────────────────────────────────────────────────
@@ -611,6 +1028,36 @@ if _CONSENT_GATE_ENABLED:
         if total_chars > 100000:
             raise HTTPException(status_code=413, detail="Request exceeds maximum size")
 
+        # Security scan: detect injection patterns in user messages
+        _sec_msgs = [{"role": m.role, "content": m.content} for m in body.messages]
+        _sec_detections = scan_messages(_sec_msgs, source="interview")
+        for _det in _sec_detections:
+            log_detection(_det, session_id=session_id or "", request_path="/v1/chat/completions")
+        _sec_blocks = [d for d in _sec_detections if d.severity == SEVERITY_BLOCK]
+        if _sec_blocks:
+            if session_id:
+                record_anomaly(session_id, _sec_detections)
+            raise HTTPException(
+                status_code=422,
+                detail="Your message was flagged by our security system. Please rephrase."
+            )
+        if session_id and _sec_detections:
+            record_anomaly(session_id, _sec_detections)
+
+        # CS7 (Guilt Trip): enforce hard turn cap per session
+        if session_id:
+            meta = session_store.get(session_id)
+            if meta and meta.turn_count >= _MAX_INTERVIEW_TURNS:
+                logger.warning(
+                    f"TURN LIMIT reached for session {session_id}: "
+                    f"{meta.turn_count} >= {_MAX_INTERVIEW_TURNS}"
+                )
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Session has reached the maximum of {_MAX_INTERVIEW_TURNS} turns. "
+                           f"Please submit your receipt to complete the session."
+                )
+
         idempotency_key = request.headers.get("X-Idempotency-Key")
         audit_metadata  = {
             "idempotency_key": idempotency_key,
@@ -627,11 +1074,25 @@ if _CONSENT_GATE_ENABLED:
         prepared_request = adapter.prepare(body)
         if body.stream:
             return StreamingResponse(
-                adapter.stream(prepared_request),
+                _stream_with_felt_extraction(
+                    adapter.stream(prepared_request),
+                    session_id,
+                    len(body.messages),
+                ),
                 media_type="text/event-stream",
             )
         response = await adapter.invoke(prepared_request)
         response.maestro.request_id = request_id
+
+        # Extract [FELT: label] from assistant response and store
+        if response.choices and session_id:
+            assistant_text = response.choices[0].message.content
+            msg_count = len(body.messages)
+            background_tasks.add_task(
+                _extract_and_store_felt_state,
+                session_id, assistant_text, msg_count,
+            )
+
         return response
 
 else:
@@ -653,6 +1114,15 @@ else:
         if total_chars > 100000:
             raise HTTPException(status_code=413, detail="Request exceeds maximum size")
 
+        # CS7 (Guilt Trip): enforce hard turn cap per session
+        if session_id:
+            meta = session_store.get(session_id)
+            if meta and meta.turn_count >= _MAX_INTERVIEW_TURNS:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Session has reached the maximum of {_MAX_INTERVIEW_TURNS} turns."
+                )
+
         idempotency_key = request.headers.get("X-Idempotency-Key")
         audit_metadata  = {"idempotency_key": idempotency_key} if idempotency_key else {}
         background_tasks.add_task(
@@ -666,10 +1136,24 @@ else:
         prepared_request = adapter.prepare(body)
         if body.stream:
             return StreamingResponse(
-                adapter.stream(prepared_request),
+                _stream_with_felt_extraction(
+                    adapter.stream(prepared_request),
+                    session_id,
+                    len(body.messages),
+                ),
                 media_type="text/event-stream",
             )
         response = await adapter.invoke(prepared_request)
         response.maestro.request_id = request_id
+
+        # Extract [FELT: label] from assistant response and store
+        if response.choices and session_id:
+            assistant_text = response.choices[0].message.content
+            msg_count = len(body.messages)
+            background_tasks.add_task(
+                _extract_and_store_felt_state,
+                session_id, assistant_text, msg_count,
+            )
+
         return response
 

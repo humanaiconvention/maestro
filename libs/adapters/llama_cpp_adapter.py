@@ -5,11 +5,11 @@ Calls a running llama.cpp server (OpenAI-compatible API) so the gateway can use
 the fine-tuned Qwen GGUF model as a drop-in replacement for the MockAdapter.
 
 Configuration (env vars):
-    LLAMACPP_BASE_URL          Base URL of the llama.cpp server (required, e.g. http://localhost:<port>)
-    LLAMACPP_MODEL             Model name string sent in API requests (required)
-    LLAMACPP_MAX_TOKENS        Max tokens per response (default: 1500)
+    LLAMACPP_BASE_URL          Base URL of the llama.cpp server (default: http://localhost:8081)
+    LLAMACPP_MODEL             Model name string sent in API requests (default: qwen3.5-2b-haic-v7)
+    LLAMACPP_MAX_TOKENS        Max tokens per response (default: 1500 — covers Qwen3 <think> block + answer)
     LLAMACPP_TEMPERATURE       Sampling temperature (default: 0.4)
-    LLAMACPP_REPEAT_PENALTY    Repeat penalty for reasoning-loop suppression (default: 1.3)
+    LLAMACPP_REPEAT_PENALTY    Repeat penalty to break Qwen3 thinking loops (default: 1.3)
     LLAMACPP_SYSTEM_PROMPT_PATH  Path to system prompt file (default: auto-detects sgt/prompts/base_interviewer.txt)
     LLAMACPP_TIMEOUT           HTTP timeout in seconds (default: 60)
 
@@ -55,6 +55,9 @@ _FALLBACK_SYSTEM_PROMPT = (
     "that moves 180 degrees from how they answered. Emit [PIVOT: type] before your question. "
     "Turn 3: zoom into physical, embodied, or sequential texture. "
     "Turn 4: ask for one irreducible image or detail that holds the whole experience. "
+    "Starting from Turn 2, also emit [FELT: label] before your question, where label is "
+    "your 2-5 word reading of the participant's affective state from their preceding turn "
+    "(e.g., 'grounded, specific' or 'searching, slightly guarded'). "
     "After turn 4: one sentence of thanks, then stop. "
     "No interpretation, no advice, no affirmations. Mirror their exact words."
 )
@@ -118,17 +121,17 @@ class LlamaCppAdapter(BaseAdapter):
     Routes inference to a running llama.cpp server via its OpenAI-compatible API.
 
     The server must be started separately — typically:
-        llama-server -m <model.gguf> --port <LLAMACPP_PORT> -c 4096 -np 1 --chat-template chatml
+        llama-server.exe -m <model.gguf> --port 8081 -c 4096 -np 1 --chat-template chatml
     """
 
     def __init__(self) -> None:
-        self.base_url = os.environ.get("LLAMACPP_BASE_URL", "").rstrip("/")
-        self.model_name = os.environ.get("LLAMACPP_MODEL", "")
-        # 2000 tokens: safe budget for reasoning block + answer
+        self.base_url = os.environ.get("LLAMACPP_BASE_URL", "http://localhost:8081").rstrip("/")
+        self.model_name = os.environ.get("LLAMACPP_MODEL", "qwen3.5-2b-haic-v7")
+        # 2000 tokens: safe budget for Qwen3 <think> block (can be long) + answer
         self.max_tokens = int(os.environ.get("LLAMACPP_MAX_TOKENS", "2000"))
         # 0.4 temperature — lower than default to reduce drift while allowing variety
         self.temperature = float(os.environ.get("LLAMACPP_TEMPERATURE", "0.4"))
-        # repeat_penalty=1.3 helps reasoning loops terminate reliably
+        # repeat_penalty=1.3 breaks the Qwen3 reasoning loop so </think> is reliably reached
         self.repeat_penalty = float(os.environ.get("LLAMACPP_REPEAT_PENALTY", "1.3"))
         self.timeout = float(os.environ.get("LLAMACPP_TIMEOUT", "60"))
         self.system_prompt = _load_system_prompt()
@@ -144,9 +147,9 @@ class LlamaCppAdapter(BaseAdapter):
     @staticmethod
     def _strip_thinking(text: str) -> str:
         """
-        Remove <think>...</think> reasoning blocks from the output.
+        Remove Qwen3 <think>...</think> reasoning blocks from the output.
 
-        Some models produce internal reasoning wrapped in <think> tags
+        The fine-tuned model may produce internal reasoning wrapped in <think> tags
         before emitting the final answer. We strip these so the participant only
         sees the question.
         """
@@ -259,7 +262,7 @@ class LlamaCppAdapter(BaseAdapter):
 
         try:
             # Accumulate the full response text so we can strip <think> blocks
-            # before streaming back to the client. Reasoning tokens can
+            # before streaming back to the client. Qwen3 thinking tokens can
             # span many chunks, so we cannot strip inline.
             full_text = ""
             model_name = self.model_name

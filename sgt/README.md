@@ -1,7 +1,7 @@
 # Semantic Grounding & Information Preservation Benchmark
 
 > Orientation note: this file is the detailed benchmark/manual surface.  
-> For subsystem navigation and current status, start with [README-new.md](README-new.md), [STATUS.md](STATUS.md), and [HANDOFF.md](HANDOFF.md).
+> For subsystem navigation and current HAIC-facing status, start with [README-new.md](./README-new.md), [STATUS.md](./STATUS.md), and [HANDOFF.md](./HANDOFF.md).
 
 **Operationalizing the Semantic Viability Condition ($E_t \le C_t$) for Recursive Learning Systems.**
 

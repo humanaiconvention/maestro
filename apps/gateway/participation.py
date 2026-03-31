@@ -34,13 +34,26 @@ import time
 from dataclasses import dataclass, asdict
 from typing import Any, Optional
 
-from apps.gateway import db
-
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-_USE_DB = bool(os.environ.get("DATABASE_URL"))
+# Persistence: Postgres if DATABASE_URL is set, SQLite otherwise, in-memory as last resort.
+_USE_POSTGRES = bool(os.environ.get("DATABASE_URL"))
+_USE_SQLITE = not _USE_POSTGRES  # SQLite is the default local persistence
+_USE_DB = _USE_POSTGRES or _USE_SQLITE
+
+if _USE_POSTGRES:
+    from apps.gateway import db
+    logger.info("Receipt persistence: Postgres (DATABASE_URL set)")
+elif _USE_SQLITE:
+    from apps.gateway import db_sqlite as db  # type: ignore[assignment]
+    try:
+        db.init_db()
+        logger.info("Receipt persistence: SQLite at %s", db.SQLITE_DB_PATH)
+    except Exception as exc:
+        logger.warning("SQLite init failed, falling back to in-memory: %s", exc)
+        _USE_DB = False
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -249,6 +262,78 @@ async def list_receipts(since: Optional[str] = None) -> list[ParticipationReceip
 # Pydantic request/response models (module-level for FastAPI annotation resolution)
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _run_cognitive_pipeline(lattice_path: str, lattice_dir: str) -> None:
+    """
+    Run the Orch-OS-aligned cognitive pipeline on a single lattice file.
+
+    This is a best-effort background operation triggered at receipt time.
+    It scores the session through all cognitive cores, updates the memory
+    field, and appends the training signal to the signals file.
+
+    Non-fatal: any failure here does NOT affect the receipt.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    try:
+        from libs.lattice.signal_scorer import SignalScorer
+        from libs.lattice.memory_field import MemoryField
+        from libs.lattice.collapse import CollapseFunction
+    except ImportError:
+        # Running from a context where libs isn't on path — try relative
+        import sys
+        _lib_root = str(_Path(__file__).resolve().parents[2])
+        if _lib_root not in sys.path:
+            sys.path.insert(0, _lib_root)
+        from libs.lattice.signal_scorer import SignalScorer
+        from libs.lattice.memory_field import MemoryField
+        from libs.lattice.collapse import CollapseFunction
+
+    data_dir = _Path(lattice_dir).parent  # data/lattices -> data/
+    field_path = str(data_dir / "memory_field.pkl")
+    signals_path = str(data_dir / "training_signals.json")
+
+    with open(lattice_path, "r", encoding="utf-8") as f:
+        lattice_data = _json.load(f)
+
+    scorer = SignalScorer()
+    mf = MemoryField(field_path)
+    collapse_fn = CollapseFunction(scorer, mf)
+
+    signal, cognitive = collapse_fn.collapse_with_routing(lattice_data)
+
+    # Store centroid in memory field
+    from libs.lattice.signal_scorer import _get_embedder
+    all_texts, _, _ = scorer._extract_turns(lattice_data)
+    if all_texts:
+        embedder = _get_embedder()
+        import numpy as _np
+        embs = embedder.encode(all_texts, convert_to_numpy=True)
+        centroid = embs.mean(axis=0)
+        score = scorer.score_from_dict(lattice_data)
+        mf.store_from_score(score, centroid)
+        mf.save()
+
+    # Append signal to training_signals.json
+    existing_signals = []
+    if _Path(signals_path).exists():
+        with open(signals_path, "r", encoding="utf-8") as f:
+            existing_signals = _json.load(f)
+
+    # Deduplicate by session_id
+    existing_ids = {s.get("session_id") for s in existing_signals}
+    if signal.session_id not in existing_ids:
+        existing_signals.append(signal.to_dict())
+        with open(signals_path, "w", encoding="utf-8") as f:
+            _json.dump(existing_signals, f, indent=2, ensure_ascii=False)
+
+    logger.info(
+        f"Cognitive pipeline complete: {signal.session_id} "
+        f"type={signal.signal_type} weight={signal.weight:.4f} "
+        f"cores={collapse_fn.router._dominant_cores(cognitive.signals)}"
+    )
+
+
 class LatticeSubmitRequest(BaseModel):
     lattice: dict   # Either SessionLattice.to_dict() OR lightweight skeleton
 
@@ -276,6 +361,11 @@ def register_receipt_routes(app: Any) -> None:
     """
     from fastapi import HTTPException
 
+    # CS5 (Storage Exhaustion): max session size and turn count limits
+    _MAX_LATTICE_SIZE_BYTES = 65_536   # 64 KB max lattice payload
+    _MAX_SESSION_TURNS      = 20       # hard cap on conversation turns
+    _MAX_MESSAGES           = 40       # hard cap on messages (user + assistant)
+
     @app.post("/v1/session/receipt", response_model=ReceiptResponse, tags=["session"])
     async def create_receipt(body: LatticeSubmitRequest):
         """
@@ -287,13 +377,32 @@ def register_receipt_routes(app: Any) -> None:
              server-side before issuing the receipt.
 
         The Merkle root is always derived server-side, never trusted from the client.
+
+        CS5 hardening: rejects sessions exceeding size/turn limits.
         """
+        import json as _json
         from libs.lattice import (
             SessionLattice, SessionInput, ConsentRecord,
             build_session_lattice, verify_lattice, to_receipt_dict,
         )
 
         d = body.lattice
+
+        # CS5: Size guard — reject oversized payloads before processing
+        raw_size = len(_json.dumps(d, ensure_ascii=False).encode("utf-8"))
+        if raw_size > _MAX_LATTICE_SIZE_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Lattice payload ({raw_size:,} bytes) exceeds max ({_MAX_LATTICE_SIZE_BYTES:,} bytes)"
+            )
+
+        # CS5: Turn count guard
+        messages = d.get("messages", [])
+        if len(messages) > _MAX_MESSAGES:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Session has {len(messages)} messages — max is {_MAX_MESSAGES}"
+            )
 
         # Detect lightweight skeleton (has 'messages' key, not 'base_nodes')
         if "messages" in d and "base_nodes" not in d:
@@ -307,10 +416,47 @@ def register_receipt_routes(app: Any) -> None:
                     retention       = consent_d.get("retention",        "6mo"),
                     agreed_at       = consent_d.get("agreed_at",        ""),
                 )
+
+                # Assemble felt_states from three possible sources:
+                # 1. Client-submitted felt_states in the skeleton body
+                # 2. Session store accumulation (from POST /v1/session/felt-state)
+                # 3. Fall back to [None] * len(messages)
+                messages = d.get("messages", [])
+                raw_felt = d.get("felt_states")
+
+                if raw_felt and isinstance(raw_felt, list):
+                    # Client provided felt_states inline with the skeleton
+                    fs_list = raw_felt
+                else:
+                    # Pull from session store (accumulated via per-turn endpoint)
+                    _sid = d.get("session_id", "unknown")
+                    try:
+                        from apps.gateway.session_store import session_store as _ss
+                        stored_fs = _ss.get_felt_states(_sid)
+                    except Exception:
+                        stored_fs = []
+
+                    if stored_fs:
+                        # Convert session store format (list of dicts with
+                        # turn_index) to the parallel list format expected
+                        # by SessionInput.  Build a sparse list indexed by
+                        # turn_index, with None for turns without labels.
+                        fs_list = [None] * len(messages)
+                        for fs_entry in stored_fs:
+                            idx = fs_entry.get("turn_index", -1)
+                            if 0 <= idx < len(messages):
+                                fs_list[idx] = fs_entry
+                    else:
+                        fs_list = [None] * len(messages)
+
+                # Respect consent: if felt_state consent is denied, zero out
+                if consent.felt_state == "denied":
+                    fs_list = [None] * len(messages)
+
                 inp = SessionInput(
                     session_id   = d.get("session_id", "unknown"),
-                    messages     = d.get("messages", []),
-                    felt_states  = [None] * len(d.get("messages", [])),
+                    messages     = messages,
+                    felt_states  = fs_list,
                     context_text = d.get("context_text"),
                     consent      = consent,
                 )
@@ -330,6 +476,33 @@ def register_receipt_routes(app: Any) -> None:
         receipt_input = to_receipt_dict(lattice)
         receipt = build_receipt(receipt_input)
         await store_receipt(receipt)
+
+        # Persist lattice to pool for improvement pipeline
+        # This bridges the gap: receipt → SQLite AND lattice → data/lattices/
+        try:
+            from libs.lattice import save_lattice as _save_lattice
+            from pathlib import Path as _Path
+            _pool_dir = _Path(__file__).resolve().parents[3] / "data" / "lattices"
+            # Worktree detection: if .git is a file (not dir), walk up to main repo
+            _repo_root = _Path(__file__).resolve().parents[3]
+            if (_repo_root / ".git").is_file():
+                _pool_dir = _repo_root.parent.parent.parent / "data" / "lattices"
+            _pool_dir.mkdir(parents=True, exist_ok=True)
+            _lattice_path = _pool_dir / f"{lattice.session_id}.json"
+            _save_lattice(lattice, str(_lattice_path))
+            logger.info(f"Lattice saved to pool: {_lattice_path.name} ({len(lattice.base_nodes)} nodes)")
+
+            # Run cognitive routing + collapse on the saved lattice (best-effort)
+            # This triggers the full Orch-OS-aligned pipeline: signal generation,
+            # core activation, memory field update, and collapse scoring.
+            try:
+                _run_cognitive_pipeline(str(_lattice_path), str(_pool_dir))
+            except Exception as _cog_exc:
+                logger.warning(f"Cognitive pipeline (non-fatal): {_cog_exc}")
+
+        except Exception as exc:
+            logger.warning(f"Failed to save lattice to pool: {exc}")
+            # Non-fatal: receipt is already stored, lattice save is best-effort
 
         return ReceiptResponse(**receipt.to_dict())
 

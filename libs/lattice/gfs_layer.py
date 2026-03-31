@@ -13,7 +13,7 @@ Key design decisions:
   - GFS weights are not baked into the participant's immutable receipt.
   - The consent layer "gfs_activations" governs whether GFS nodes are used for training.
 
-GFS Dimensions (v1 baseline — covers general grounding model scope):
+GFS Dimensions (v1 baseline — matches current Qwen3.5-2B grounding model scope):
   emotional_grounding   — degree of felt-state acknowledgement in model response
   attribution_clarity   — ownership of feeling (self vs attributed to other/situation)
   hedging_handling      — correct processing of uncertainty markers (I guess, maybe)
@@ -25,7 +25,7 @@ Usage:
     from libs.lattice import load_lattice, annotate_lattice, recompute_gfs_layer
 
     lattice = load_lattice("path/to/session.json")
-    lattice = annotate_lattice(lattice, model_path=os.environ.get("LOCAL_MODEL_PATH", ""))
+    lattice = annotate_lattice(lattice, model_path="experiments/qwen3_5_2b/v7/merged")
     # lattice.derived_nodes now populated with gfs_dimension nodes
 """
 

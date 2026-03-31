@@ -75,6 +75,12 @@ class SessionMeta:
     kernel_type: Optional[str]  = None
     consented:   bool           = False
     closed:      bool           = False
+    felt_states: list           = field(default_factory=list)
+    # felt_states: list of dicts, one per turn.  Each dict contains
+    # at minimum {"turn_index": int, "label": str} where label is the
+    # participant's affect word/phrase.  Optional keys: "valence" (-1..1),
+    # "arousal" (0..1), "note" (free text).
+    # Entries are keyed by turn_index and append-only during the session.
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -152,6 +158,56 @@ class _InMemorySessionStore:
             meta.last_active = time.time()
             return meta.turn_count
 
+    def record_felt_state(
+        self,
+        session_id: str,
+        turn_index: int,
+        label: str,
+        valence: Optional[float] = None,
+        arousal: Optional[float] = None,
+        note: Optional[str] = None,
+    ) -> Optional[dict]:
+        """
+        Record a felt-state label for a specific turn in the session.
+
+        The participant can submit one felt_state per turn.  If a label
+        already exists for this turn_index, it is replaced (last-write-wins,
+        since the participant may refine their label).
+
+        Returns the recorded felt_state dict, or None if session not found.
+        """
+        with self._lock:
+            meta = self._store.get(session_id)
+            if meta is None:
+                return None
+
+            fs_entry: dict = {"turn_index": turn_index, "label": label}
+            if valence is not None:
+                fs_entry["valence"] = max(-1.0, min(1.0, valence))
+            if arousal is not None:
+                fs_entry["arousal"] = max(0.0, min(1.0, arousal))
+            if note:
+                fs_entry["note"] = note[:500]  # cap free text
+
+            # Replace existing entry for this turn_index, or append
+            meta.felt_states = [
+                fs for fs in meta.felt_states
+                if fs.get("turn_index") != turn_index
+            ]
+            meta.felt_states.append(fs_entry)
+            meta.felt_states.sort(key=lambda x: x.get("turn_index", 0))
+            meta.last_active = time.time()
+
+            return fs_entry
+
+    def get_felt_states(self, session_id: str) -> list[dict]:
+        """Return all felt_state entries for a session, ordered by turn_index."""
+        with self._lock:
+            meta = self._store.get(session_id)
+            if meta is None:
+                return []
+            return list(meta.felt_states)
+
     def close_session(self, session_id: str) -> None:
         """Mark a session as closed (terminal signal received)."""
         with self._lock:
@@ -224,6 +280,12 @@ class _RedisSessionStore:
             data["turn_count"]  = int(data.get("turn_count", 0))
             data["consented"]   = data.get("consented") == "True"
             data["closed"]      = data.get("closed") == "True"
+            # felt_states stored as JSON string in Redis hash
+            fs_raw = data.get("felt_states", "[]")
+            try:
+                data["felt_states"] = json.loads(fs_raw) if isinstance(fs_raw, str) else []
+            except (json.JSONDecodeError, TypeError):
+                data["felt_states"] = []
             return SessionMeta.from_dict(data)
         except Exception as exc:
             logger.warning("session_store: Redis read error", extra={"error": str(exc)})
@@ -275,6 +337,47 @@ class _RedisSessionStore:
         except Exception as exc:
             logger.warning("session_store: Redis incr error", extra={"error": str(exc)})
             return self._fallback.increment_turn(session_id)
+
+    def record_felt_state(
+        self,
+        session_id: str,
+        turn_index: int,
+        label: str,
+        valence: Optional[float] = None,
+        arousal: Optional[float] = None,
+        note: Optional[str] = None,
+    ) -> Optional[dict]:
+        if self._r is None:
+            return self._fallback.record_felt_state(
+                session_id, turn_index, label, valence, arousal, note
+            )
+        meta = self._load(session_id)
+        if meta is None:
+            return None
+
+        fs_entry: dict = {"turn_index": turn_index, "label": label}
+        if valence is not None:
+            fs_entry["valence"] = max(-1.0, min(1.0, valence))
+        if arousal is not None:
+            fs_entry["arousal"] = max(0.0, min(1.0, arousal))
+        if note:
+            fs_entry["note"] = note[:500]
+
+        meta.felt_states = [
+            fs for fs in meta.felt_states
+            if fs.get("turn_index") != turn_index
+        ]
+        meta.felt_states.append(fs_entry)
+        meta.felt_states.sort(key=lambda x: x.get("turn_index", 0))
+        meta.last_active = time.time()
+        self._save(meta)
+        return fs_entry
+
+    def get_felt_states(self, session_id: str) -> list[dict]:
+        meta = self._load(session_id)
+        if meta is None:
+            return []
+        return list(meta.felt_states)
 
     def close_session(self, session_id: str) -> None:
         if self._r is None:
