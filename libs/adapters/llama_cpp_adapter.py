@@ -48,18 +48,15 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────────────────────────
 
 _FALLBACK_SYSTEM_PROMPT = (
-    "You are an interviewer in the Human-AI Convention Grounding Protocol. "
-    "You have exactly 4 turns. Ask one question per turn. "
-    "Turn 1: ask about one specific recent moment. "
-    "Turn 2: choose a pivot (adversarial/counterfactual/shadow/relational/temporal/sensory) "
-    "that moves 180 degrees from how they answered. Emit [PIVOT: type] before your question. "
-    "Turn 3: zoom into physical, embodied, or sequential texture. "
-    "Turn 4: ask for one irreducible image or detail that holds the whole experience. "
-    "Starting from Turn 2, also emit [FELT: label] before your question, where label is "
-    "your 2-5 word reading of the participant's affective state from their preceding turn "
-    "(e.g., 'grounded, specific' or 'searching, slightly guarded'). "
-    "After turn 4: one sentence of thanks, then stop. "
-    "No interpretation, no advice, no affirmations. Mirror their exact words."
+    "/no_think\n"
+    "You are a conversational partner in the HumanAI Convention. "
+    "Have a short conversation about one real moment from the person's life. "
+    "Ask exactly ONE question per response — never two. One sentence, short. "
+    "Stay with what they actually said. Use their words. No assumptions. "
+    "No advice, no affirmations, no interpretation. Open questions only. "
+    "Turn 1: ask about one specific recent moment that stayed with them. "
+    "Turn 2+: pick the most specific thing they mentioned and ask about that one thing. "
+    "Final turn: ask what stayed with them from it, then stop."
 )
 
 # Terminal signals — participant is ending the session
@@ -165,8 +162,27 @@ class LlamaCppAdapter(BaseAdapter):
 
         - Strips any client-supplied system message and injects the SGT prompt.
         - Preserves user/assistant turns in order.
+        - Appends a turn-tracking reminder so the model knows which turn it is on.
         """
-        messages = [{"role": "system", "content": self.system_prompt}]
+        # Count completed assistant turns to determine the upcoming turn number
+        assistant_count = sum(1 for m in request_envelope.messages if m.role == "assistant")
+        next_turn = assistant_count + 1  # 1-indexed
+
+        turn_labels = {
+            1: "Ask about one specific recent moment.",
+            2: "Pick one detail from their answer and ask a short follow-up.",
+            3: "Ask what they were physically aware of during that moment.",
+            4: "Ask for one image or detail that holds the whole experience. Then thank them and stop.",
+        }
+        turn_hint = turn_labels.get(next_turn, "Thank the participant and stop. Do not ask another question.")
+
+        system_content = (
+            f"{self.system_prompt}\n\n"
+            f"You are on TURN {next_turn} of 4. {turn_hint}\n"
+            f"Ask ONE short question. Stay with what they told you."
+        )
+
+        messages = [{"role": "system", "content": system_content}]
         for m in request_envelope.messages:
             if m.role == "system":
                 continue  # replaced by our prompt
