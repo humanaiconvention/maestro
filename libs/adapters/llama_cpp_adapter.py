@@ -168,18 +168,28 @@ class LlamaCppAdapter(BaseAdapter):
         assistant_count = sum(1 for m in request_envelope.messages if m.role == "assistant")
         next_turn = assistant_count + 1  # 1-indexed
 
-        turn_labels = {
-            1: "Ask about one specific recent moment.",
-            2: "Pick one detail from their answer and ask a short follow-up.",
-            3: "Ask what they were physically aware of during that moment.",
-            4: "Ask for one image or detail that holds the whole experience. Then thank them and stop.",
-        }
-        turn_hint = turn_labels.get(next_turn, "Thank the participant and stop. Do not ask another question.")
+        # Pull the last user message to anchor the hint
+        user_msgs = [m for m in request_envelope.messages if m.role == "user"]
+        last_user = user_msgs[-1].content.strip() if user_msgs else ""
+        last_user_snippet = last_user[:120] + ("…" if len(last_user) > 120 else "")
+
+        if next_turn == 1:
+            turn_hint = "Ask them to describe one specific moment that stayed with them recently."
+        elif next_turn <= 3:
+            turn_hint = (
+                f"They just said: \"{last_user_snippet}\"\n"
+                f"Ask ONE question about the most specific thing in what they said. "
+                f"Do not introduce anything they didn't mention."
+            )
+        else:
+            turn_hint = (
+                f"They just said: \"{last_user_snippet}\"\n"
+                f"Ask what stayed with them from this whole experience. Then stop — no more questions."
+            )
 
         system_content = (
             f"{self.system_prompt}\n\n"
-            f"You are on TURN {next_turn} of 4. {turn_hint}\n"
-            f"Ask ONE short question. Stay with what they told you."
+            f"TURN {next_turn}.\n{turn_hint}"
         )
 
         messages = [{"role": "system", "content": system_content}]
