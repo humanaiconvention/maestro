@@ -154,6 +154,21 @@ class LlamaCppAdapter(BaseAdapter):
         cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
         return cleaned.strip()
 
+    @staticmethod
+    def _enforce_single_question(text: str) -> str:
+        """
+        Hard-truncate response to a single question.
+
+        The fine-tuned model sometimes generates multiple questions despite
+        system prompt instructions. This finds the first '?' and returns
+        everything up to and including it, discarding any trailing content.
+        If the response contains no '?', it is returned unchanged.
+        """
+        idx = text.find("?")
+        if idx == -1:
+            return text
+        return text[: idx + 1].strip()
+
     # ── Message construction ──────────────────────────────────────────────────
 
     def _build_messages(self, request_envelope) -> list[dict]:
@@ -241,7 +256,9 @@ class LlamaCppAdapter(BaseAdapter):
                 )
 
         choice = data["choices"][0]
-        text = self._strip_thinking(choice["message"]["content"])
+        text = self._enforce_single_question(
+            self._strip_thinking(choice["message"]["content"])
+        )
         usage = data.get("usage", {})
         req_id = data.get("id", f"llamacpp_{uuid.uuid4().hex[:12]}")
 
@@ -315,7 +332,9 @@ class LlamaCppAdapter(BaseAdapter):
                             pass
 
             # Strip thinking blocks then re-emit word by word
-            clean_text = self._strip_thinking(full_text)
+            clean_text = self._enforce_single_question(
+                self._strip_thinking(full_text)
+            )
             words = clean_text.split(" ")
             for i, word in enumerate(words):
                 chunk_text = word if i == 0 else " " + word
