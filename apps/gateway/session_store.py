@@ -52,12 +52,88 @@ Usage
 import json
 import logging
 import os
+import pathlib
 import threading
 import time
 from dataclasses import asdict, dataclass, field
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+# Directory for session checkpoints — survives gateway restarts.
+# Falls back to data/sessions/ relative to CWD when env var not set.
+_SESSION_CHECKPOINT_DIR: Optional[pathlib.Path] = None
+
+
+def _checkpoint_dir() -> Optional[pathlib.Path]:
+    """Return the directory used for session checkpoints, or None to disable."""
+    global _SESSION_CHECKPOINT_DIR
+    if _SESSION_CHECKPOINT_DIR is not None:
+        return _SESSION_CHECKPOINT_DIR
+    raw = os.environ.get("SESSION_CHECKPOINT_DIR", "")
+    if raw.lower() == "disabled":
+        return None
+    base = pathlib.Path(raw) if raw else pathlib.Path("data") / "sessions"
+    try:
+        base.mkdir(parents=True, exist_ok=True)
+        _SESSION_CHECKPOINT_DIR = base
+        return base
+    except OSError:
+        return None
+
+
+def _checkpoint_path(session_id: str) -> Optional[pathlib.Path]:
+    d = _checkpoint_dir()
+    if d is None:
+        return None
+    # Session IDs are UUIDs so this is safe as a filename
+    safe = session_id.replace("/", "_").replace("\\", "_")[:128]
+    return d / f"{safe}.json"
+
+
+def _write_checkpoint(meta: "SessionMeta") -> None:
+    """Persist a SessionMeta snapshot to disk (best-effort, never raises)."""
+    try:
+        p = _checkpoint_path(meta.session_id)
+        if p is None:
+            return
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps(asdict(meta), ensure_ascii=False), encoding="utf-8")
+        tmp.replace(p)
+    except Exception:
+        pass
+
+
+def _delete_checkpoint(session_id: str) -> None:
+    """Remove a session checkpoint from disk (best-effort)."""
+    try:
+        p = _checkpoint_path(session_id)
+        if p and p.exists():
+            p.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+def _load_checkpoints(ttl: int) -> dict[str, "SessionMeta"]:
+    """Load non-expired SessionMeta objects from the checkpoint directory."""
+    d = _checkpoint_dir()
+    if d is None:
+        return {}
+    restored: dict[str, "SessionMeta"] = {}
+    now = time.time()
+    for p in d.glob("*.json"):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            meta = SessionMeta.from_dict(data)
+            if (now - meta.last_active) > ttl:
+                p.unlink(missing_ok=True)  # expired — clean up
+                continue
+            restored[meta.session_id] = meta
+        except Exception:
+            continue
+    if restored:
+        logger.info("session_store_restored", extra={"count": len(restored)})
+    return restored
 
 SESSION_CACHE_TTL = int(os.environ.get("SESSION_CACHE_TTL", str(3 * 3600)))  # 3h default
 
@@ -104,9 +180,11 @@ class SessionMeta:
 
 class _InMemorySessionStore:
     def __init__(self, ttl: int = SESSION_CACHE_TTL) -> None:
-        self._store: dict[str, SessionMeta] = {}
         self._lock = threading.Lock()
         self._ttl = ttl
+        # Restore non-expired sessions from filesystem checkpoints so that
+        # consent state, turn counts, and felt-state evidence survive restarts.
+        self._store: dict[str, SessionMeta] = _load_checkpoints(ttl)
 
     def _is_expired(self, meta: SessionMeta) -> bool:
         return meta.idle_seconds > self._ttl
@@ -118,6 +196,7 @@ class _InMemorySessionStore:
                 return None
             if self._is_expired(meta):
                 del self._store[session_id]
+                _delete_checkpoint(session_id)
                 return None
             return meta
 
@@ -145,7 +224,8 @@ class _InMemorySessionStore:
                 meta.kernel_type = kernel_type
             if consented and not meta.consented:
                 meta.consented = True
-            return meta
+        _write_checkpoint(meta)
+        return meta
 
     def increment_turn(self, session_id: str) -> int:
         """Increment the turn counter and return the new value."""
@@ -156,7 +236,8 @@ class _InMemorySessionStore:
                 self._store[session_id] = meta
             meta.turn_count += 1
             meta.last_active = time.time()
-            return meta.turn_count
+        _write_checkpoint(meta)
+        return meta.turn_count
 
     def record_felt_state(
         self,
@@ -176,12 +257,13 @@ class _InMemorySessionStore:
 
         Returns the recorded felt_state dict, or None if session not found.
         """
+        fs_entry: Optional[dict] = None
         with self._lock:
             meta = self._store.get(session_id)
             if meta is None:
                 return None
 
-            fs_entry: dict = {"turn_index": turn_index, "label": label}
+            fs_entry = {"turn_index": turn_index, "label": label}
             if valence is not None:
                 fs_entry["valence"] = max(-1.0, min(1.0, valence))
             if arousal is not None:
@@ -198,7 +280,9 @@ class _InMemorySessionStore:
             meta.felt_states.sort(key=lambda x: x.get("turn_index", 0))
             meta.last_active = time.time()
 
-            return fs_entry
+        if fs_entry is not None and meta is not None:
+            _write_checkpoint(meta)
+        return fs_entry
 
     def get_felt_states(self, session_id: str) -> list[dict]:
         """Return all felt_state entries for a session, ordered by turn_index."""
@@ -214,6 +298,8 @@ class _InMemorySessionStore:
             meta = self._store.get(session_id)
             if meta:
                 meta.closed = True
+        if meta:
+            _write_checkpoint(meta)
 
     def sweep(self) -> int:
         """Evict expired sessions.  Returns number of sessions removed."""
@@ -221,6 +307,8 @@ class _InMemorySessionStore:
             expired = [sid for sid, m in self._store.items() if self._is_expired(m)]
             for sid in expired:
                 del self._store[sid]
+        for sid in expired:
+            _delete_checkpoint(sid)
         if expired:
             logger.info(
                 "session_sweep",
@@ -278,8 +366,8 @@ class _RedisSessionStore:
             data["created_at"]  = float(data.get("created_at", 0))
             data["last_active"] = float(data.get("last_active", 0))
             data["turn_count"]  = int(data.get("turn_count", 0))
-            data["consented"]   = data.get("consented") == "True"
-            data["closed"]      = data.get("closed") == "True"
+            data["consented"]   = data.get("consented", "").lower() == "true"
+            data["closed"]      = data.get("closed", "").lower() == "true"
             # felt_states stored as JSON string in Redis hash
             fs_raw = data.get("felt_states", "[]")
             try:
