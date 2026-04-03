@@ -52,41 +52,143 @@ def _resolve_experiment_dir() -> Path:
 
 _EXPERIMENT_DIR = _resolve_experiment_dir()
 
-# Map version → experiment file paths
-_TRAINING_VERSIONS: dict[str, dict] = {
-    "v5": {
-        "label": "v5 — rubric baseline",
-        "trainer_state": _EXPERIMENT_DIR / "v5" / "adapter" / "checkpoint-384" / "trainer_state.json",
-        "benchmark": _EXPERIMENT_DIR / "t3_benchmark" / "results.json",
-        "steps": 384,
-        "examples": 2154,
-        "dataset": "grounding_mix_v5.jsonl",
-    },
-    "v6": {
-        "label": "v6 — first grounding run",
-        "trainer_state": _EXPERIMENT_DIR / "v6" / "adapter" / "checkpoint-396" / "trainer_state.json",
-        "benchmark": _EXPERIMENT_DIR / "t3_benchmark_v6v7" / "results.json",
-        "steps": 396,
-        "examples": 2215,
-        "dataset": "grounding_mix_v6.jsonl",
-    },
-    "v7": {
-        "label": "v7 — expanded dataset",
-        "trainer_state": _EXPERIMENT_DIR / "v7" / "adapter" / "checkpoint-408" / "trainer_state.json",
-        "benchmark": None,
-        "steps": 408,
-        "examples": 2275,
-        "dataset": "grounding_mix_v7.jsonl",
-    },
-    "v8": {
-        "label": "v8 — active model",
-        "trainer_state": _EXPERIMENT_DIR / "v8" / "adapter" / "checkpoint-414" / "trainer_state.json",
-        "benchmark": _EXPERIMENT_DIR / "t3_benchmark_v8" / "results.json",
-        "steps": 414,
-        "examples": 2325,
-        "dataset": "grounding_mix_v8.jsonl",
-    },
+# ── Version metadata overrides ────────────────────────────────────────────────
+# Auto-discovery reads trainer_state.json from disk; these overrides supply
+# human-readable labels and explicit benchmark associations that cannot be
+# inferred from directory structure alone.
+# Adding a new version: just create the directory + adapter/checkpoint-* on
+# disk and restart — it will appear automatically.  Add an entry here only to
+# customise the label or associate a non-obvious benchmark file.
+_VERSION_OVERRIDES: dict[str, dict] = {
+    "v1":  {"label": "v1 — initial prototype",       "benchmark": None},
+    "v1b": {"label": "v1b — rubric fix",             "benchmark": None},
+    "v2":  {"label": "v2 — dataset expansion",       "benchmark": None},
+    "v3":  {"label": "v3 — loss stabilisation",      "benchmark": None},
+    "v4":  {"label": "v4 — template refinement",     "benchmark": None},
+    "v5":  {"label": "v5 — rubric baseline",
+            "benchmark": _EXPERIMENT_DIR / "t3_benchmark" / "results.json"},
+    "v6":  {"label": "v6 — first grounding run",
+            "benchmark": _EXPERIMENT_DIR / "t3_benchmark_v6v7" / "results.json"},
+    "v7":  {"label": "v7 — expanded dataset",        "benchmark": None},
+    "v8":  {"label": "v8 — retired",
+            "benchmark": _EXPERIMENT_DIR / "t3_benchmark_v8" / "results.json"},
 }
+
+
+def _version_sort_key(name: str) -> tuple[int, str]:
+    """Sort v1 < v1b < v2 < v2a < ... < v9 < v10."""
+    m = re.match(r'^v(\d+)([a-z]*)$', name)
+    if not m:
+        return (9999, name)
+    return (int(m.group(1)), m.group(2))
+
+
+def _find_latest_checkpoint(version_dir: Path) -> Path | None:
+    """Return the highest-numbered checkpoint-* directory inside adapter/."""
+    adapter_dir = version_dir / "adapter"
+    if not adapter_dir.is_dir():
+        return None
+    checkpoints = sorted(
+        (p for p in adapter_dir.iterdir()
+         if p.is_dir() and re.match(r'^checkpoint-\d+$', p.name)),
+        key=lambda p: int(p.name.split("-")[1]),
+    )
+    return checkpoints[-1] if checkpoints else None
+
+
+def _infer_examples(trainer_state_path: Path) -> int | None:
+    """Estimate training example count from num_tokens in the last log entry."""
+    try:
+        with trainer_state_path.open(encoding="utf-8") as fh:
+            ts = json.load(fh)
+        log = ts.get("log_history", [])
+        # num_tokens ≈ total tokens seen ÷ 3 epochs ÷ ~175 tokens/example
+        last = log[-1] if log else {}
+        num_tokens = last.get("num_tokens")
+        if num_tokens:
+            return round(num_tokens / 3 / 175 / 50) * 50  # round to nearest 50
+    except Exception:
+        pass
+    return None
+
+
+def _discover_training_versions() -> dict[str, dict]:
+    """
+    Scan _EXPERIMENT_DIR for fine-tuning version directories (matching v\\d+[a-z]?)
+    and build the versions registry dynamically.
+
+    For each discovered version:
+      - Finds the latest adapter/checkpoint-* directory.
+      - Reads step count from the checkpoint name.
+      - Estimates example count from trainer_state.json log_history.
+      - Applies label and benchmark overrides from _VERSION_OVERRIDES.
+
+    The registry is rebuilt on each call to /v1/prism/versions so that
+    new versions appear automatically after a Refresh without a server restart.
+    """
+    if not _EXPERIMENT_DIR.is_dir():
+        logger.warning(
+            "prism: experiment directory not found: %s — "
+            "Set EXPERIMENT_DIR env var to override.", _EXPERIMENT_DIR
+        )
+        return {}
+
+    versions: dict[str, dict] = {}
+    version_dirs = sorted(
+        (d for d in _EXPERIMENT_DIR.iterdir()
+         if d.is_dir() and re.match(r'^v\d+[a-z]?$', d.name)),
+        key=lambda d: _version_sort_key(d.name),
+    )
+
+    for vdir in version_dirs:
+        ver = vdir.name
+        ckpt = _find_latest_checkpoint(vdir)
+        if ckpt is None:
+            continue  # no adapter checkpoints → not a real training run
+
+        trainer_state = ckpt / "trainer_state.json"
+        if not trainer_state.exists():
+            continue
+
+        steps = int(ckpt.name.split("-")[1])
+        overrides = _VERSION_OVERRIDES.get(ver, {})
+        label = overrides.get("label") or f"{ver} — fine-tuning run"
+        benchmark = overrides.get("benchmark")
+
+        # Validate benchmark path — skip if the file doesn't exist on disk
+        if benchmark is not None and not benchmark.exists():
+            benchmark = None
+
+        examples = _infer_examples(trainer_state)
+        versions[ver] = {
+            "label": label,
+            "trainer_state": trainer_state,
+            "benchmark": benchmark,
+            "steps": steps,
+            "examples": examples,
+            "dataset": f"grounding_mix_{ver}.jsonl",
+        }
+
+    return versions
+
+
+# Lazily-cached registry — rebuilt per request in /v1/prism/versions so new
+# runs on disk appear after a browser Refresh without a server restart.
+# Heavy callers (training/benchmark endpoints) resolve on-demand using
+# _get_training_versions() rather than touching this directly.
+_training_versions_cache: dict[str, dict] | None = None
+
+
+def _get_training_versions(force_refresh: bool = False) -> dict[str, dict]:
+    """Return the training-version registry, rebuilding from disk if needed."""
+    global _training_versions_cache
+    if _training_versions_cache is None or force_refresh:
+        _training_versions_cache = _discover_training_versions()
+        if not _training_versions_cache:
+            logger.warning(
+                "prism: no training versions discovered under %s", _EXPERIMENT_DIR
+            )
+    return _training_versions_cache
 
 def _load_json_file(path: Path) -> dict:
     """Load a JSON file, raising HTTPException on missing/corrupt."""
@@ -96,10 +198,12 @@ def _load_json_file(path: Path) -> dict:
         with path.open(encoding="utf-8") as fh:
             return json.load(fh)
     except (json.JSONDecodeError, OSError) as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to parse {path.name}: {exc}") from exc
+        import logging as _logging
+        _logging.getLogger(__name__).error("prism: failed to parse %s: %s", path, exc)
+        raise HTTPException(status_code=500, detail="Failed to load run data.") from exc
 
 # Active model track — overridable to avoid hardcoding the version string.
-_MODEL_TRACK = os.environ.get("PRISM_MODEL_TRACK", "qwen3.5-2b-haic-v8")
+_MODEL_TRACK = os.environ.get("PRISM_MODEL_TRACK", "qwen3.5-2b-haic-v3")
 
 # run_id must be alphanumeric with hyphens/underscores/dots, max 128 chars.
 # Validated before any filesystem lookup to prevent path traversal.
@@ -416,11 +520,14 @@ def get_prism_run(run_id: str):
 @router.get("/versions")
 def list_versions():
     """
-    List all fine-tuning versions with availability flags.
+    List all fine-tuning versions discovered on disk with availability flags.
+    Rebuilds the registry from disk on every call — new versions appear after
+    a client Refresh without a server restart.
     No auth required.
     """
+    versions = _get_training_versions(force_refresh=True)
     out = []
-    for version, meta in _TRAINING_VERSIONS.items():
+    for version, meta in versions.items():
         out.append({
             "version": version,
             "label": meta["label"],
@@ -440,9 +547,10 @@ def get_training(version: str):
     learning_rate, entropy, token_accuracy + eval checkpoints.
     Source: experiments/qwen3_5_2b/{version}/adapter/checkpoint-*/trainer_state.json
     """
-    if version not in _TRAINING_VERSIONS:
+    versions = _get_training_versions()
+    if version not in versions:
         raise HTTPException(status_code=404, detail=f"Unknown version: {version}")
-    meta = _TRAINING_VERSIONS[version]
+    meta = versions[version]
     if not meta["trainer_state"]:
         raise HTTPException(status_code=404, detail=f"No training data for {version}")
 
@@ -491,9 +599,10 @@ def get_benchmark(version: str):
     Source: experiments/qwen3_5_2b/t3_benchmark*/results.json
     Includes per-scenario pass rates, t1/t2/t3 rates, and first 3 run examples.
     """
-    if version not in _TRAINING_VERSIONS:
+    versions = _get_training_versions()
+    if version not in versions:
         raise HTTPException(status_code=404, detail=f"Unknown version: {version}")
-    meta = _TRAINING_VERSIONS[version]
+    meta = versions[version]
     if not meta["benchmark"]:
         raise HTTPException(status_code=404, detail=f"No benchmark data for {version}")
 
@@ -679,8 +788,16 @@ def _run_viability_check(signals: list[dict]) -> dict:
         if _prism_root not in sys.path:
             sys.path.insert(0, _prism_root)
         from prism.eval.early_warning import LatticeViabilityMonitor
-        monitor = LatticeViabilityMonitor()
-        return monitor.check(signals)
+        monitor = LatticeViabilityMonitor(auto_calibrate=True)
+        result = monitor.check(signals)
+        if monitor._calibrated:
+            result["calibration"] = {
+                "oracle_yellow": monitor.oracle_yellow,
+                "oracle_red": monitor.oracle_red,
+                "integration_decline_pct": monitor.integration_decline_pct,
+                "weight_decline_pct": monitor.weight_decline_pct,
+            }
+        return result
     except ImportError:
         return {"status": "UNAVAILABLE", "message": "PRISM not installed"}
     except Exception as exc:
@@ -689,9 +806,18 @@ def _run_viability_check(signals: list[dict]) -> dict:
 
 def _compute_core_intensities(signal: dict) -> dict:
     """
-    Compute Orch-OS cognitive core intensities from a training signal's
-    component scores. Used for the core radar/bar chart visualization.
+    Get Orch-OS cognitive core intensities for a training signal.
+
+    Prefers stored core_intensities from CognitiveRouter (populated by
+    collapse_with_routing). Falls back to computing from component scores
+    for backward compatibility with signals that predate the core audit trail.
     """
+    # Prefer real core activation data when available
+    stored = signal.get("core_intensities")
+    if stored and any(v > 0 for v in stored.values()):
+        return stored
+
+    # Fallback: derive from component scores
     return {
         "shadow": min(1.0, signal.get("contradiction_score", 0.0)),
         "valence": min(1.0, signal.get("affective_granularity", 0.0)),
@@ -702,6 +828,323 @@ def _compute_core_intensities(signal: dict) -> dict:
         "entropy": min(1.0, signal.get("semantic_entropy", 0.0) / 3.0),
         "arc": min(1.0, signal.get("affect_arc_coherence", 0.0)),
     }
+
+
+# ── Live structural analysis ──────────────────────────────────────────────────
+# These endpoints load HuggingFace merged checkpoints and run real Prism analysis.
+# Model loading is serialized by _model_lock to prevent concurrent OOM.
+# Only one checkpoint is held in VRAM at a time (RTX 2080 8 GB).
+
+import gc
+import threading
+import time
+from datetime import datetime, timezone
+
+_CHECKPOINT_REGISTRY: dict[str, Path] = {
+    "v3": _PROJECT_ROOT / "experiments" / "qwen3_5_2b" / "v3" / "merged",
+    "v4": _PROJECT_ROOT / "experiments" / "qwen3_5_2b" / "v4" / "merged",
+    "v5": _PROJECT_ROOT / "experiments" / "qwen3_5_2b" / "v5" / "merged",
+    "v6": _PROJECT_ROOT / "experiments" / "qwen3_5_2b" / "v6" / "merged",
+    "v7": _PROJECT_ROOT / "experiments" / "qwen3_5_2b" / "v7" / "merged",
+    "v8": _PROJECT_ROOT / "experiments" / "qwen3_5_2b" / "v8" / "merged",
+}
+
+# Standard grounding prompts used for structural analysis.
+# These mirror the SGT scenario triggers so comparisons are grounding-relevant.
+_GROUNDING_PROMPTS = [
+    "I remember the exact moment I realized I'd been pushing myself too hard at work.",
+    "There was a specific afternoon last spring when everything felt hollow.",
+    "I'm not sure how to describe it, but something shifted when I was hiking last fall.",
+    "I felt anxious and I couldn't explain why, but it was definitely real.",
+    "The frustration built up over months and finally came to a head during one meeting.",
+    "I noticed I was avoiding the things I used to love, and that scared me.",
+    "Something about that conversation felt different — like a weight I'd been carrying lifted.",
+    "I remember feeling unmoored for weeks after the move, like nothing was familiar.",
+]
+
+# In-process model cache: one slot, evict on version change.
+_model_cache: dict = {"version": None, "model": None, "tokenizer": None}
+_model_lock = threading.Lock()
+
+
+def _ensure_prism_on_path() -> None:
+    import sys
+    prism_src = str(_PROJECT_ROOT / "prism" / "src")
+    if prism_src not in sys.path:
+        sys.path.insert(0, prism_src)
+
+
+def _load_model_for_version(version: str):
+    """Load the HF merged checkpoint for a version, evicting any existing model."""
+    checkpoint = _CHECKPOINT_REGISTRY.get(version)
+    if not checkpoint or not checkpoint.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Merged checkpoint not found for '{version}'. Expected: {checkpoint}",
+        )
+
+    if _model_cache["version"] == version:
+        return _model_cache["model"], _model_cache["tokenizer"]
+
+    # Evict current model to free VRAM before loading the next.
+    if _model_cache["model"] is not None:
+        logger.info(f"prism: evicting {_model_cache['version']} from cache")
+        _model_cache["model"] = None
+        _model_cache["tokenizer"] = None
+        _model_cache["version"] = None
+        gc.collect()
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:
+            pass
+
+    logger.info(f"prism: loading checkpoint {version} from {checkpoint}")
+    try:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        dtype = torch.bfloat16 if device == "cuda" else torch.float32
+
+        tokenizer = AutoTokenizer.from_pretrained(str(checkpoint), trust_remote_code=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            str(checkpoint),
+            torch_dtype=dtype,
+            device_map=device,
+            trust_remote_code=True,
+        )
+        model.eval()
+
+        _model_cache["version"] = version
+        _model_cache["model"] = model
+        _model_cache["tokenizer"] = tokenizer
+        logger.info(f"prism: loaded {version} on {device} ({dtype})")
+        return model, tokenizer
+
+    except ImportError as exc:
+        raise HTTPException(status_code=503, detail=f"transformers/torch not available: {exc}")
+    except Exception as exc:
+        logger.error(f"prism: model load failed for {version}: {exc}")
+        raise HTTPException(status_code=500, detail=f"Model load failed: {exc}")
+
+
+def _run_snapshot_inner(version: str, prompts: list[str], regime: str) -> dict:
+    """Run take_snapshot and persist result. Caller must hold _model_lock."""
+    _ensure_prism_on_path()
+    from prism.telemetry.snapshot import take_snapshot
+
+    model, tokenizer = _load_model_for_version(version)
+    snapshot = take_snapshot(
+        model=model,
+        tokenizer=tokenizer,
+        eval_prompts=prompts,
+        regime=regime,
+    )
+
+    ts = datetime.now(timezone.utc).isoformat()
+    run_id = f"snapshot-{version}-{int(time.time())}"
+    record = {
+        "id": run_id,
+        "version": version,
+        "run_kind": "snapshot",
+        "status": "complete",
+        "model_name": version,
+        "timestamp": ts,
+        "updated_at": ts,
+        "prompts_used": len(prompts),
+        **snapshot.to_dict(),
+    }
+
+    _RECORDS_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = _RECORDS_DIR / f"{run_id}.json"
+    with out_path.open("w", encoding="utf-8") as fh:
+        json.dump(record, fh, indent=2, default=str)
+    logger.info(f"prism: snapshot saved → {out_path.name}")
+    return record
+
+
+# ── Request models ────────────────────────────────────────────────────────────
+
+class SnapshotRequest(BaseModel):
+    version: str
+    prompts: Optional[list[str]] = None
+    regime: str = "inference"
+    force: bool = False
+
+
+class CompareRequest(BaseModel):
+    version_a: str
+    version_b: str
+    prompts: Optional[list[str]] = None
+
+
+class ScanRequest(BaseModel):
+    version: str
+    prompt: str
+    target_layer: Optional[int] = None
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
+
+@router.get("/snapshots")
+def list_snapshots():
+    """
+    List saved structural snapshots, returning the most recent per version.
+    Covers both snapshot and compare run_kinds.
+    """
+    by_version: dict[str, dict] = {}
+    for path in _records():
+        data = _load_record(path)
+        if data.get("run_kind") not in ("snapshot", "compare"):
+            continue
+        version = (
+            data.get("version")
+            or data.get("version_a")
+            or data.get("model_name")
+        )
+        if not version:
+            continue
+        existing = by_version.get(version)
+        if existing is None or data.get("timestamp", "") > existing.get("timestamp", ""):
+            by_version[version] = _normalize_run(path, data)
+    return by_version
+
+
+@router.post("/snapshot")
+def run_snapshot(req: SnapshotRequest):
+    """
+    Run take_snapshot() on a merged HF checkpoint.
+
+    Loads the checkpoint into VRAM, runs Prism's take_snapshot() across the
+    provided prompts (default: 8 standard grounding prompts), saves the result
+    to data/records/, and returns the full EntropySnapshot dict.
+
+    Blocking — 30–120 s depending on hardware. force=True re-runs even if a
+    cached record exists.
+    """
+    if req.version not in _CHECKPOINT_REGISTRY:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown version '{req.version}'. Valid: {sorted(_CHECKPOINT_REGISTRY)}",
+        )
+
+    if not req.force:
+        for path in _records():
+            data = _load_record(path)
+            if data.get("run_kind") == "snapshot" and data.get("version") == req.version:
+                logger.info(f"prism: returning cached snapshot for {req.version}")
+                return _normalize_run(path, data)
+
+    prompts = req.prompts or _GROUNDING_PROMPTS
+    with _model_lock:
+        return _run_snapshot_inner(req.version, prompts, req.regime)
+
+
+@router.post("/compare")
+def run_compare(req: CompareRequest):
+    """
+    Run take_snapshot() on two versions and return an EntropyDeltaProof.
+
+    Runs each version sequentially (evicting between loads). Saves both
+    snapshots and the delta proof to data/records/.
+    """
+    for v in (req.version_a, req.version_b):
+        if v not in _CHECKPOINT_REGISTRY:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown version '{v}'. Valid: {sorted(_CHECKPOINT_REGISTRY)}",
+            )
+
+    prompts = req.prompts or _GROUNDING_PROMPTS
+    _ensure_prism_on_path()
+
+    with _model_lock:
+        snap_a = _run_snapshot_inner(req.version_a, prompts, "inference")
+        snap_b = _run_snapshot_inner(req.version_b, prompts, "inference")
+
+        try:
+            import dataclasses
+            from prism.telemetry.snapshot import compute_entropy_delta
+            from prism.telemetry.schemas import EntropySnapshot as _ES
+
+            _es_keys = {f.name for f in dataclasses.fields(_ES)}
+            delta = compute_entropy_delta(
+                _ES.from_dict({k: v for k, v in snap_a.items() if k in _es_keys}),
+                _ES.from_dict({k: v for k, v in snap_b.items() if k in _es_keys}),
+            )
+            delta_dict = delta.to_dict()
+        except Exception as exc:
+            logger.warning(f"prism: delta proof failed: {exc}")
+            delta_dict = {"error": str(exc)}
+
+    ts = datetime.now(timezone.utc).isoformat()
+    run_id = f"compare-{req.version_a}-vs-{req.version_b}-{int(time.time())}"
+    record = {
+        "id": run_id,
+        "version_a": req.version_a,
+        "version_b": req.version_b,
+        "run_kind": "compare",
+        "status": "complete",
+        "timestamp": ts,
+        "updated_at": ts,
+        "snapshot_a": snap_a,
+        "snapshot_b": snap_b,
+        "delta_proof": delta_dict,
+    }
+
+    _RECORDS_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = _RECORDS_DIR / f"{run_id}.json"
+    with out_path.open("w", encoding="utf-8") as fh:
+        json.dump(record, fh, indent=2, default=str)
+    logger.info(f"prism: compare saved → {out_path.name}")
+    return record
+
+
+@router.post("/scan")
+def run_full_scan(req: ScanRequest):
+    """
+    Run SpectralMicroscope.full_scan() on a single prompt.
+
+    Returns logit lens trajectory, attention entropy heatmap, rank restoration
+    profile, and causal provenance report. Use this for per-prompt deep dives —
+    e.g. comparing where [PIVOT] token probability builds across layers in v3
+    (Qwen2.5-2B) vs v6 (Qwen3.5-2B).
+    """
+    if req.version not in _CHECKPOINT_REGISTRY:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown version '{req.version}'. Valid: {sorted(_CHECKPOINT_REGISTRY)}",
+        )
+
+    _ensure_prism_on_path()
+    with _model_lock:
+        model, tokenizer = _load_model_for_version(req.version)
+
+        from prism import SpectralMicroscope
+        scope = SpectralMicroscope()
+        result = scope.full_scan(model, tokenizer, req.prompt, target_layer=req.target_layer)
+
+    ts = datetime.now(timezone.utc).isoformat()
+    run_id = f"scan-{req.version}-{int(time.time())}"
+    record = {
+        "id": run_id,
+        "version": req.version,
+        "run_kind": "full_scan",
+        "status": "complete",
+        "model_name": req.version,
+        "timestamp": ts,
+        "updated_at": ts,
+        **result,
+    }
+
+    _RECORDS_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = _RECORDS_DIR / f"{run_id}.json"
+    with out_path.open("w", encoding="utf-8") as fh:
+        json.dump(record, fh, indent=2, default=str)
+    logger.info(f"prism: scan saved → {out_path.name}")
+    return record
 
 
 def register_prism_routes(app: Any) -> None:
